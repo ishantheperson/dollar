@@ -1,21 +1,22 @@
 module Parser.Types where
 
 import Parser.Lexer 
+import Parser.AST
 
 import Text.Megaparsec
 import Text.Megaparsec.Char
+import Text.Megaparsec.Debug
 
 import Data.Functor
 
-data C0Type = C0Int 
-            | C0Char
-            | C0String
-            | C0Bool
-            | C0Void
-            | C0Typedef String 
-            | C0Pointer C0Type
-            | C0Array C0Type deriving Show 
-            -- also need function ptr types
+typedef = do 
+  reserved "typedef"
+  typeName <- identifier 
+  typeValue <- parseType
+  
+  semicolon
+
+  return (typeName, typeValue)
 
 simple = 
   reserved "int" $> C0Int<|>
@@ -32,6 +33,7 @@ parseType = simple >>= postfix
         pointer, array :: C0Type -> Parser C0Type
         pointer t = do symbol "*" 
                        postfix $ C0Pointer t
+
         array t = do symbol "["
                      symbol "]" 
                      postfix $ C0Array t

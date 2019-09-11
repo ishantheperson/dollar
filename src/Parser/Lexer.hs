@@ -2,15 +2,17 @@
 module Parser.Lexer where  
 
 import Control.Monad (void)
+import Control.Monad.State.Strict
 
 import Data.Void 
 import Data.Int
 
-import Text.Megaparsec
+import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as Lex 
 
-type Parser = Parsec Void String 
+type Parser = ParsecT Void String (State C0ParserState)
+--type Parser = Parsec Void String 
 
 reservedWords = [ "if",
                   "else",
@@ -62,7 +64,6 @@ symbol = Lex.symbol sc
 charLiteral = lexeme $ char '\'' >> (Lex.charLiteral <* char '\'')
 stringLiteral = lexeme $ char '"' >> manyTill Lex.charLiteral (char '"')
 
-
 integer :: Parser Int32
 integer = do num <- lexeme Lex.decimal 
              if toInteger (minBound :: Int32) <= num && num <= toInteger (maxBound :: Int32) 
@@ -70,7 +71,7 @@ integer = do num <- lexeme Lex.decimal
                else fail $ "integer constant " ++ show num ++ " out of bounds"
 
 semicolon = symbol ";"
-reserved word = (lexeme . try) (string word) *> notFollowedBy alphaNumChar 
+reserved word = (lexeme . try) (string word *> notFollowedBy alphaNumChar)
 
 identifier = (lexeme . try) (p >>= check)
   where p = (:) <$> identStart <*> many identLetter
@@ -78,5 +79,5 @@ identifier = (lexeme . try) (p >>= check)
         identLetter = alphaNumChar <|> char '_'
 
         check x = if x `elem` reservedWords 
-                    then fail $ x ++ " cannot be an identifier"
+                    then fail $ "'" ++ x ++ "' cannot be an identifier"
                     else return x 

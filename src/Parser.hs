@@ -6,9 +6,10 @@ import Parser.Expression
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
-contract = do 
-  lexeme $ string "//@"
-  a <- identifier
-  semicolon
-
-  return a
+contract = lineContract <|> blockContract 
+  where lineContract = do 
+          lexeme $ string "//@"
+          a <- expression 
+          semicolon
+      
+          return a
