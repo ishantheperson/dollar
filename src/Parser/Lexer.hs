@@ -1,4 +1,4 @@
--- {-# LANGUAGE NondecreasingIndentation #-}
+{-# LANGUAGE LambdaCase #-}
 module Parser.Lexer where  
 
 import Parser.C0ParserState
@@ -13,8 +13,15 @@ import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as Lex 
 
---type Parser = ParsecT Void String (State C0ParserState)
-type Parser = Parsec Void String 
+type Parser = ParsecT Void String (State C0ParserState)
+--type Parser = Parsec Void String 
+
+test :: Show a => Parser a -> FilePath -> String -> String
+test p fileName input = 
+  case evalState (runParserT (p <* eof) fileName input) defaultState of 
+    Left err -> errorBundlePretty err 
+    Right v ->  show v
+
 
 reservedWords = [ "if",
                   "else",
@@ -43,15 +50,24 @@ reservedWords = [ "if",
                 ]
 
 -- | Space consumer 
-sc :: Parser () 
-sc = Lex.space space1 lineComment blockComment 
-  where lineComment = do 
-          try $ string "//" >> notFollowedBy (char '@')
-          void $ manyTill anySingle (char '\n')
+sc, scRegular, scLineContract, scBlockContract :: Parser () 
+sc = lift (gets parsingMode) >>= \case Regular -> scRegular
+                                       LineContract -> scLineContract
+                                       BlockContract -> scBlockContract
 
-        blockComment = do 
-          try $ string "/*" >> notFollowedBy (char '@')
-          void $ manyTill anySingle (string "*/")
+scRegular = Lex.space space1 lineComment blockComment 
+-- In contracts, @ is a space char (not specified in the language spec tho I think)
+-- In line contracts, don't allow newlines 
+scLineContract = Lex.space (skipSome (oneOf "@ \t")) lineComment blockComment
+scBlockContract = Lex.space (skipSome (void spaceChar {- <|> (char '@' >> notFollowedBy (string "*")) -})) lineComment blockComment
+
+lineComment = do 
+  try $ string "//" >> notFollowedBy (char '@')
+  void $ manyTill anySingle (char '\n')
+blockComment = do 
+  try $ string "/*" >> notFollowedBy (char '@')
+  void $ manyTill anySingle (string "*/")
+
 
 lexeme :: Parser a -> Parser a 
 lexeme = Lex.lexeme sc

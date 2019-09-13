@@ -24,6 +24,10 @@ data Expression = -- Terms
 
                 | Alloc C0Type
                 | AllocArray C0Type Expression  
+
+                | ContractLength Expression
+                | HasTag C0Type Expression
+                | ContractResult 
                 
                   -- Expression 
                 | BinOp BinOperator Expression Expression
@@ -68,4 +72,5 @@ data Statement = Assign (Either VariableDecl Expression) Expression
                | FunctionCallStmnt Expression
                | StatementBlock [Statement] deriving Show -- technically "3;" is valid here too 
 
-data ContractType = AssertContract | LoopInvariant | Requires | Ensures 
+data ContractType = AssertContract | LoopInvariant | Requires | Ensures deriving Show
+data Contract = Contract ContractType Expression deriving Show

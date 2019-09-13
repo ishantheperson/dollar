@@ -1,13 +1,20 @@
+{-# LANGUAGE LambdaCase #-}
 module Parser.C0ParserState where 
 
 import Parser.AST
 
-import qualified Data.Map.Strict as Map
+--import qualified Data.Map.Strict as Map
 -- import Control.Arrow ((>>>))
 
+data ParsingMode = Regular | LineContract | BlockContract deriving Show
+isParsingContract = \case Regular -> False 
+                          _ -> True 
+
 data C0ParserState = C0ParserState {
-                       knownTypedefs :: Map.Map String C0Type
-                     } -- might need lenses *sigh*
+                       parsingMode :: ParsingMode 
+                     } deriving Show -- might need lenses *sigh*
+
+defaultState = C0ParserState Regular 
 
 --addTypedef name typeValue = 
 --  (lift modify) (knownTypedefs >>> 

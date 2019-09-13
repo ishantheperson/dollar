@@ -1,10 +1,17 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Parser.Expression where
 
 import Parser.Lexer 
 import Parser.AST
 import Parser.Types
+import Parser.C0ParserState
 
+import Data.Functor
+
+import Control.Monad
+import Control.Monad.State
 import Control.Monad.Combinators.Expr
+
 import Text.Megaparsec
 import Text.Megaparsec.Char
 --import Text.Megaparsec.Debug
@@ -33,6 +40,7 @@ expression = makeExprParser (term >>= postfix) operators <?> "expression"
 term :: Parser Expression 
 term = parens expression <|> 
        allocArray <|> alloc <|> 
+       contractLength <|> hasTag <|> contractResult <|>
        IntConstant <$> integer <|> 
        StringLiteral <$> stringLiteral <|> 
        CharLiteral <$> charLiteral <|>
@@ -41,7 +49,15 @@ term = parens expression <|>
        Identifier <$> identifier 
   where alloc = Alloc <$> (reserved "alloc" *> parens parseType)
         allocArray = do reserved "alloc_array"
-                        parens (AllocArray <$> (parseType <* symbol ",") <*> expression)                         
+                        parens (AllocArray <$> (parseType <* symbol ",") <*> expression)   
+                        
+        contractLength = do guardContract "\\length only allowed in contracts" -- experimental
+                            reserved "\\length" *> parens (ContractLength <$> expression)
+        hasTag = do reserved "\\hastag" 
+                    parens (HasTag <$> (parseType <* symbol ",") <*> expression)
+        contractResult = ContractResult <$ reserved "\\result" 
+        guardContract msg = do allowed <- lift get >>= return . isParsingContract . parsingMode
+                               when (not allowed) (fail msg)
 
 operators :: [[Operator Parser Expression]]
 operators = [[prefixOp Negate "-",
