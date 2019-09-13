@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 module Parser.Types where
 
 import Parser.Lexer 
@@ -8,6 +9,12 @@ import Text.Megaparsec.Char
 import Text.Megaparsec.Debug
 
 import Data.Functor
+
+variableDecl = do 
+  varType <- parseType
+  varName <- identifier
+
+  return VariableDecl{..}
 
 typedef = do 
   reserved "typedef"

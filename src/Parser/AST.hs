@@ -4,7 +4,8 @@ data VariableDecl = VariableDecl { varName :: String, varType :: C0Type } derivi
 
 data Function = Function { functionType :: C0Type, 
                            functionName :: String, 
-                           functionArgDecls :: [VariableDecl] } deriving Show
+                           functionArgDecls :: [VariableDecl],
+                           functionBody :: [Statement] } deriving Show
 
 data Expression = -- Terms
                   IntConstant Integer 
@@ -13,14 +14,16 @@ data Expression = -- Terms
                 | BoolLiteral Bool 
                 | Identifier String
 
-
-                | FunctionCall String [Expression]
+                | FunctionCall Expression [Expression]
                 | Ternary Expression Expression Expression
 
                 | ArrayAccess Expression Expression
 
                 | StructDotAccess Expression String 
                 | StructArrowAccess Expression String 
+
+                | Alloc C0Type
+                | AllocArray C0Type Expression
                 
                   -- Expression 
                 | BinOp BinOperator Expression Expression
@@ -51,7 +54,7 @@ data C0Type = C0Int -- prefixed with C0 to avoid name collisions with Haskell ty
             | C0Pointer C0Type
             | C0Array C0Type deriving Show 
             -- also need function ptr types
-            
+
 data Statement = Assign (Either VariableDecl Expression) Expression
                | Increment Expression
                | Decrement Expression

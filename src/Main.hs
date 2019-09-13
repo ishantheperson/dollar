@@ -1,7 +1,6 @@
 module Main where 
 
-import Parser.Expression
-import Parser.Statement
+import Parser.Function
 import Text.Megaparsec
 
-main = getContents >>= parseTest (statement <* eof)
+main = getContents >>= parseTest ((many functionDef) <* eof)

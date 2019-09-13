@@ -4,7 +4,6 @@ import Parser.Lexer
 import Parser.AST
 import Parser.Types
 import Parser.Expression
-import Parser.Function 
 
 import Text.Megaparsec
 import Text.Megaparsec.Debug 
