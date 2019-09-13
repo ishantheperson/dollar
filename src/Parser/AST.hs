@@ -51,3 +51,16 @@ data C0Type = C0Int -- prefixed with C0 to avoid name collisions with Haskell ty
             | C0Pointer C0Type
             | C0Array C0Type deriving Show 
             -- also need function ptr types
+            
+data Statement = Assign (Either VariableDecl Expression) Expression
+               | Increment Expression
+               | Decrement Expression
+               | IfStatement Expression Statement (Maybe Statement)
+               -- Contracts need to be added to loops here
+               | WhileLoop Expression Statement
+               | ForLoop Statement Expression (Maybe Statement) Statement 
+               | Return (Maybe Expression)
+               | Assert Expression
+               | Error Expression
+               | FunctionCallStmnt Expression
+               | StatementBlock [Statement] deriving Show -- technically "3;" is valid here too 

@@ -10,16 +10,53 @@ import Text.Megaparsec
 import Text.Megaparsec.Debug 
 
 import Data.Functor
-
-lvalue = expression -- We check if its valid later 
-  
-data Statement = Assign (Either VariableDecl Expression) Expression
-               | Increment Expression
-               | Decrement Expression
-               | LoneExpression Expression deriving Show -- e.g. function call
      
+statement = (statementBlock <|>
+            ifStatement <|>
+            whileLoop <|>
+            forLoop <|>
+            returnStatement <* semicolon <|>
+            assertStatement <* semicolon <|>
+            errorStatement <* semicolon <|>
+            simple <* semicolon)
+               
+ifStatement = do 
+  reserved "if"
+  condition <- parens expression
+  ifBody <- statement 
+  elseBody <- optional $ reserved "else" >> statement 
+  
+  return $ IfStatement condition ifBody elseBody 
 
-simple = assign <|> inc <|> dec <|> (LoneExpression <$> expression)
+whileLoop = do 
+  reserved "while"
+  condition <- parens expression
+  body <- statement 
+
+  return $ WhileLoop condition body 
+
+forLoop = do 
+  reserved "for"
+  (init, test, inc) <- parens $ do
+    init <- simple 
+    semicolon
+    test <- expression
+    semicolon
+    inc <- optional simple
+    
+    return (init, test, inc)
+
+  body <- statement 
+
+  return $ ForLoop init test inc body 
+
+returnStatement = Return <$> (reserved "return" *> optional expression)
+assertStatement = Assert <$> (reserved "assert" *> expression)
+errorStatement = Error <$> (reserved "error" *> expression)
+
+statementBlock = StatementBlock <$> (braces $ many statement)
+
+simple = assign <|> inc <|> dec <|> (FunctionCallStmnt <$> expression)
   where assign = do 
           (lhs, op) <- try $ do
                          lhs <- (Right <$> expression) <|> (Left <$> variableDecl); 

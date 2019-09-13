@@ -56,9 +56,10 @@ sc = Lex.space space1 lineComment blockComment
 lexeme :: Parser a -> Parser a 
 lexeme = Lex.lexeme sc
 
-parens, squareBrackets :: Parser a -> Parser a 
+parens, squareBrackets, braces :: Parser a -> Parser a 
 parens = between (symbol "(") (symbol ")")
 squareBrackets = between (symbol "[") (symbol "]")
+braces = between (symbol "{") (symbol "}")
 
 symbol :: String -> Parser String 
 symbol = Lex.symbol sc

@@ -1,6 +1,7 @@
 module Main where 
 
 import Parser.Expression
+import Parser.Statement
 import Text.Megaparsec
 
-main = getContents >>= parseTest (expression <* eof)
+main = getContents >>= parseTest (statement <* eof)
