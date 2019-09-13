@@ -6,6 +6,10 @@ import Parser.Expression
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
+data Decl = Typedef String C0Type 
+          | FunctionDecl Function
+
+{-
 contract = lineContract <|> blockContract 
   where lineContract = do 
           lexeme $ string "//@"
@@ -13,3 +17,7 @@ contract = lineContract <|> blockContract
           semicolon
       
           return a
+-}
+
+generalDecl = (uncurry Typedef <$> typedef) <|> (Function <$> function) <* semicolon
+  

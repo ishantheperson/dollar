@@ -1,6 +1,4 @@
 module Parser.AST where 
-  
-import Data.Int
 
 data VariableDecl = VariableDecl { varName :: String, varType :: C0Type } deriving Show 
 
@@ -9,7 +7,7 @@ data Function = Function { functionType :: C0Type,
                            functionArgDecls :: [VariableDecl] } deriving Show
 
 data Expression = -- Terms
-                  IntConstant Int32 
+                  IntConstant Integer 
                 | StringLiteral String 
                 | CharLiteral Char 
                 | BoolLiteral Bool 
@@ -44,7 +42,7 @@ data UnaryOperator =
   | PointerDeref
   deriving Show
 
-data C0Type = C0Int 
+data C0Type = C0Int -- prefixed with C0 to avoid name collisions with Haskell types...
             | C0Char
             | C0String
             | C0Bool

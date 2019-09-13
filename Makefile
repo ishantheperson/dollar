@@ -7,7 +7,7 @@ SOURCE = $(shell find src/ -name "*.hs")
 
 EXECUTABLE = dollar 
 
-all: $(EXECUTABLE) doc 
+all: $(EXECUTABLE) 
 
 $(EXECUTABLE): $(SOURCE)
 	$(GHC) $(GHCFLAGS) $(GHCBUILDFLAGS) src/Main.hs -o $(EXECUTABLE)

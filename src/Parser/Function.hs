@@ -25,4 +25,4 @@ functionHeader = do
   -- TODO: function contracts 
   return Function{..}
 
-functionDecl = functionHeader <* semicolon
+functionDecl = functionHeader 

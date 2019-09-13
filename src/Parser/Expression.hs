@@ -5,7 +5,9 @@ import Parser.AST
 
 import Control.Monad.Combinators.Expr
 import Text.Megaparsec
+import Text.Megaparsec.Char
 
+expression :: Parser Expression
 expression = makeExprParser (term >>= postfix) operators <?> "expression"
   where postfix e = dotAccess e <|> 
                     arrayAccess e <|> 
@@ -41,26 +43,29 @@ operators = [[prefixOp Negate "-",
               prefixOp BoolNot "!",
               prefixOp PointerDeref "*"],
 
-             [binOp Multiply "*",
-              binOp Divide "/",
-              binOp Mod "%"],
+             [binOp' Multiply "*",
+              binOp' Divide "/",
+              binOp' Mod "%"],
 
-             [binOp Plus "+",
-              binOp Minus "-"],
+             [binOp' Plus "+",
+              binOp' Minus "-"],
 
-             [binOp LeftShift "<<",
-              binOp RightShift ">>"],
+             [binOp' LeftShift "<<",
+              binOp' RightShift ">>"],
 
-             [binOp Less "<",
-              binOp LessEqual "<=",
-              binOp Greater ">",
-              binOp GreaterEqual ">="],
+             [binOp' Less "<",
+              binOp' LessEqual "<=",
+              binOp' Greater ">",
+              binOp' GreaterEqual ">="],
 
              [binOp Equal "==",
               binOp NotEqual "!="],
 
-             [binOp BitAnd "&"],
-             [binOp Xor "^"],
-             [binOp BitOr "|"]]
+             [binOp' BitAnd "&"],
+             [binOp' Xor "^"],
+             [binOp' BitOr "|"]]
   where prefixOp constructor sym = Prefix (UnaryOp constructor <$ symbol sym)
         binOp constructor sym = InfixL ((BinOp constructor) <$ symbol sym)
+        -- This is for operators which have a compound assignment counterpart
+        -- This way the + in += doesn't get lexed individually, for example.
+        binOp' constructor sym = InfixL ((BinOp constructor) <$ (try $ symbol sym <* notFollowedBy (char '=')))

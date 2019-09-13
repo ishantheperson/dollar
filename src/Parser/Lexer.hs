@@ -1,6 +1,8 @@
 -- {-# LANGUAGE NondecreasingIndentation #-}
 module Parser.Lexer where  
 
+import Parser.C0ParserState
+
 import Control.Monad (void)
 import Control.Monad.State.Strict
 
@@ -11,8 +13,8 @@ import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as Lex 
 
-type Parser = ParsecT Void String (State C0ParserState)
---type Parser = Parsec Void String 
+--type Parser = ParsecT Void String (State C0ParserState)
+type Parser = Parsec Void String 
 
 reservedWords = [ "if",
                   "else",
@@ -64,14 +66,17 @@ symbol = Lex.symbol sc
 charLiteral = lexeme $ char '\'' >> (Lex.charLiteral <* char '\'')
 stringLiteral = lexeme $ char '"' >> manyTill Lex.charLiteral (char '"')
 
-integer :: Parser Int32
-integer = do num <- lexeme Lex.decimal 
-             if toInteger (minBound :: Int32) <= num && num <= toInteger (maxBound :: Int32) 
+-- | Parses an integer value and checks to make sure 
+integer :: Parser Integer
+integer = lexeme (try $ char '0' >> char' 'x' >> Lex.hexadecimal) <|> lexeme Lex.decimal
+-- We don't want to check this here, otherwise we have to deal with special cases for -0x80000000 etc 
+{-             if toInteger (minBound :: Int32) <= num && num <= toInteger (maxBound :: Int32) 
                then return (fromInteger num) 
-               else fail $ "integer constant " ++ show num ++ " out of bounds"
+               else fail $ "integer constant " ++ show num ++ " out of bounds" -}
 
 semicolon = symbol ";"
 reserved word = (lexeme . try) (string word *> notFollowedBy alphaNumChar)
+
 
 identifier = (lexeme . try) (p >>= check)
   where p = (:) <$> identStart <*> many identLetter

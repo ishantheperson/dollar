@@ -14,17 +14,9 @@ typedef = do
   typeName <- identifier 
   typeValue <- parseType
   
-  semicolon
+  --semicolon
 
   return (typeName, typeValue)
-
-simple = 
-  reserved "int" $> C0Int<|>
-  reserved "char" $> C0Char <|>
-  reserved "string" $> C0String<|>
-  reserved "void" $> C0Void <|>
-  reserved "bool" $> C0Bool <|>
-  C0Typedef <$> identifier 
 
 parseType :: Parser C0Type
 parseType = simple >>= postfix
@@ -37,3 +29,11 @@ parseType = simple >>= postfix
         array t = do symbol "["
                      symbol "]" 
                      postfix $ C0Array t
+
+        simple = 
+          reserved "int" $> C0Int<|>
+          reserved "char" $> C0Char <|>
+          reserved "string" $> C0String<|>
+          reserved "void" $> C0Void <|>
+          reserved "bool" $> C0Bool <|>
+          C0Typedef <$> identifier 
