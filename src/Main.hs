@@ -1,6 +1,15 @@
+{-# LANGUAGE LambdaCase #-}
 module Main where 
 
 import Parser.Function
 import Text.Megaparsec
 
-main = getContents >>= parseTest ((many functionDef) <* eof)
+import Control.Monad
+
+import System.Environment (getArgs)
+
+main = getArgs >>= \case 
+  [] -> getContents >>= parse 
+  l -> forM_ l (readFile >=> parse)
+  
+  where parse = parseTest ((many functionDef) <* eof)

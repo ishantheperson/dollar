@@ -23,7 +23,7 @@ data Expression = -- Terms
                 | StructArrowAccess Expression String 
 
                 | Alloc C0Type
-                | AllocArray C0Type Expression
+                | AllocArray C0Type Expression  
                 
                   -- Expression 
                 | BinOp BinOperator Expression Expression
@@ -67,3 +67,5 @@ data Statement = Assign (Either VariableDecl Expression) Expression
                | Error Expression
                | FunctionCallStmnt Expression
                | StatementBlock [Statement] deriving Show -- technically "3;" is valid here too 
+
+data ContractType = AssertContract | LoopInvariant | Requires | Ensures 

@@ -20,7 +20,7 @@ functionHeader = do
   -- TODO: function contracts 
   return (functionType, functionName, functionArgDecls)
 
-functionDecl = do 
+functionDef = do 
   (functionType, functionName, functionArgDecls) <- functionHeader 
   functionBody <- braces (many statement) 
   return Function{..}
