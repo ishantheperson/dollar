@@ -95,7 +95,7 @@ semicolon = symbol ";"
 reserved word = (lexeme . try) (string word *> notFollowedBy alphaNumChar)
 
 
-identifier = (lexeme . try) (p >>= check)
+identifier = (lexeme . try) (p >>= check) <?> "identifier"
   where p = (:) <$> identStart <*> many identLetter
         identStart = letterChar
         identLetter = alphaNumChar <|> char '_'

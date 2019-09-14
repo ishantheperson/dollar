@@ -2,14 +2,13 @@
 module Parser.Function where 
 
 import Parser.Lexer 
-import Parser.Expression 
 import Parser.Statement 
 import Parser.Types 
 import Parser.AST
+import Parser.Contract
 
 import Text.Megaparsec
-import Text.Megaparsec.Char
-import Text.Megaparsec.Debug
+--import Text.Megaparsec.Debug
 --import Text.Megaparsec.Combinator
 
 functionHeader = do 
@@ -22,5 +21,6 @@ functionHeader = do
 
 functionDef = do 
   (functionType, functionName, functionArgDecls) <- functionHeader 
+  functionContracts <- contractBlock
   functionBody <- braces (many statement) 
   return Function{..}

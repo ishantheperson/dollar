@@ -10,7 +10,8 @@ import Control.Monad.Combinators (choice)
 
 import Text.Megaparsec
 
---contractBlock :: Parser [Contract]
+contractBlock :: Parser [Contract]
+contractBlock = concat <$> many (lineContract <|> blockContract)
 
 lineContract = do 
   symbol "//@"

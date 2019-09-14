@@ -5,6 +5,7 @@ data VariableDecl = VariableDecl { varName :: String, varType :: C0Type } derivi
 data Function = Function { functionType :: C0Type, 
                            functionName :: String, 
                            functionArgDecls :: [VariableDecl],
+                           functionContracts :: [Contract],
                            functionBody :: [Statement] } deriving Show
 
 data Expression = -- Terms

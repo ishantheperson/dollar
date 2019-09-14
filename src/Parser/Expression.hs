@@ -6,8 +6,6 @@ import Parser.AST
 import Parser.Types
 import Parser.C0ParserState
 
-import Data.Functor
-
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.Combinators.Expr
@@ -56,6 +54,8 @@ term = parens expression <|>
         hasTag = do reserved "\\hastag" 
                     parens (HasTag <$> (parseType <* symbol ",") <*> expression)
         contractResult = ContractResult <$ reserved "\\result" 
+        -- might remove this since it's not something
+        -- we should check in the parser 
         guardContract msg = do allowed <- lift get >>= return . isParsingContract . parsingMode
                                when (not allowed) (fail msg)
 
@@ -84,9 +84,12 @@ operators = [[prefixOp Negate "-",
              [binOp Equal "==",
               binOp NotEqual "!="],
 
-             [binOp' BitAnd "&"],
+             [binOp'' BitAnd "&"],
              [binOp' Xor "^"],
-             [binOp' BitOr "|"],
+             [binOp'' BitOr "|"],
+
+             [binOp BoolAnd "&&"],
+             [binOp BoolOr "||"],
              
              [TernR ((Ternary <$ symbol ":") <$ symbol "?")]
              ]
