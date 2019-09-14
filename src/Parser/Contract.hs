@@ -12,6 +12,7 @@ import Text.Megaparsec
 
 contractBlock :: Parser [Contract]
 contractBlock = concat <$> many (lineContract <|> blockContract)
+nonemptyContractBlock = concat <$> some (lineContract <|> blockContract)
 
 lineContract = do 
   symbol "//@"

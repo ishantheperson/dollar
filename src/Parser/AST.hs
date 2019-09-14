@@ -65,12 +65,13 @@ data Statement = Assign (Either VariableDecl Expression) Expression
                | Decrement Expression
                | IfStatement Expression Statement (Maybe Statement)
                -- Contracts need to be added to loops here
-               | WhileLoop Expression Statement
-               | ForLoop Statement Expression (Maybe Statement) Statement 
+               | WhileLoop Expression [Contract] Statement
+               | ForLoop Statement Expression (Maybe Statement) [Contract] Statement 
                | Return (Maybe Expression)
                | Assert Expression
                | Error Expression
                | FunctionCallStmnt Expression
+               | StatementContract [Contract]
                | StatementBlock [Statement] deriving Show -- technically "3;" is valid here too 
 
 data ContractType = AssertContract | LoopInvariant | Requires | Ensures deriving Show

@@ -4,20 +4,22 @@ import Parser.Lexer
 import Parser.AST
 import Parser.Types
 import Parser.Expression
+import Parser.Contract
 
 import Text.Megaparsec
 import Text.Megaparsec.Debug 
 
 import Data.Functor
      
-statement = (statementBlock <|>
+statement = statementBlock <|>
             ifStatement <|>
             whileLoop <|>
             forLoop <|>
             returnStatement <* semicolon <|>
             assertStatement <* semicolon <|>
             errorStatement <* semicolon <|>
-            simple <* semicolon)
+            (StatementContract <$> nonemptyContractBlock) <|>
+            simple <* semicolon
                
 ifStatement = do 
   reserved "if"
@@ -30,9 +32,10 @@ ifStatement = do
 whileLoop = do 
   reserved "while"
   condition <- parens expression
+  contracts <- contractBlock
   body <- statement 
 
-  return $ WhileLoop condition body 
+  return $ WhileLoop condition contracts body 
 
 forLoop = do 
   reserved "for"
@@ -45,9 +48,11 @@ forLoop = do
     
     return (init, test, inc)
 
+  contracts <- contractBlock
+
   body <- statement 
 
-  return $ ForLoop init test inc body 
+  return $ ForLoop init test inc contracts body 
 
 returnStatement = Return <$> (reserved "return" *> optional expression)
 assertStatement = Assert <$> (reserved "assert" *> expression)
