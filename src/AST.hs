@@ -85,5 +85,6 @@ data Statement = VariableDeclStmnt VariableDecl
                | StatementContract [Contract]
                | StatementBlock [Statement] deriving Show -- technically "3;" is valid here too 
 
-data ContractType = AssertContract | LoopInvariant | Requires | Ensures deriving Show
-data Contract = Contract ContractType Expression deriving Show
+data ContractType = AssertContract | LoopInvariant | Requires | Ensures deriving (Show, Eq)
+data Contract = Contract { getContractType :: ContractType, getContractBody :: Expression } deriving Show
+

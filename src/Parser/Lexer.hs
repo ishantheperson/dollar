@@ -23,6 +23,10 @@ test p fileName input =
     Left err -> errorBundlePretty err 
     Right v ->  show v
 
+test' p input = 
+  case evalState (runParserT (p <* eof) "" input) defaultState of 
+    Left err -> error $ errorBundlePretty err 
+    Right v -> v 
 
 reservedWords = [ "if",
                   "else",

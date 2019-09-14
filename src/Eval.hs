@@ -1,52 +1,46 @@
-{-# LANGUAGE LambdaCase, ViewPatterns #-}
+{-# LANGUAGE LambdaCase, ViewPatterns, ScopedTypeVariables #-}
 module Eval where 
 
 import AST
 import Eval.C0Value
+import Eval.Context 
 
 import Data.Bits 
 import Data.Int 
+import qualified Data.Map.Strict as Map 
 
 import Data.Maybe (fromJust, fromMaybe)
 
 import Control.Arrow
 
+import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Trans.Except 
 import Control.Monad.Trans.State.Strict
 
-import qualified Data.Map.Strict as Map 
+--evalFunction :: Function -> [C0Value] -> IO () 
+evalFunction f args = 
+  let initialContext = fromMap . Map.fromList $ zip (map varName (functionArgDecls f)) args 
+      requires = filter ((==) Requires . getContractType) (functionContracts f)
+      ensures = filter ((==) Ensures . getContractType) (functionContracts f)
+      
+  in runStateT (runFunction initialContext requires ensures) initialContext
+  where runFunction c requires ensures = do 
+          put c :: StateT Context IO ()
+          -- Check contracts here
+          preconditionsMet :: Bool <- c0BoolAnd <$> ((mapM (evalE . getContractBody) requires) :: StateT Context IO [C0Value])
+          when (not preconditionsMet) (liftIO $ ioError (userError "Requires failed"))
 
-type VarMap = Map.Map String C0Value 
+          runExceptT (traverse evalS (functionBody f))
 
-data Context = Context { 
-                 getCurrentScope :: VarMap, 
-                 getParentScope :: Maybe Context 
-               } deriving Show 
-
-emptyContext = Context Map.empty Nothing 
-
--- throw IO error if var doesnt exist 
-lookupVar name = do 
-  context <- get
-  return $ go name context 
-  
-  where go name context = 
-          case Map.lookup name (getCurrentScope context) of 
-            Just v -> v 
-            -- crashes if variable doesnt exist, thats the type checkers job :) 
-            Nothing -> go name (fromJust $ getParentScope context) 
-
-insertVar :: String -> C0Value -> Context -> Context 
-insertVar name val context = 
-  let scope = getCurrentScope context 
-      newMap = Map.insert name val scope 
-  in context { getCurrentScope = newMap }
+        c0BoolAnd = \case [] -> True 
+                          (C0BoolVal b):xs -> b && c0BoolAnd xs 
 
 -- | Returns (Left v1) to indicate the function returned
---   (Right ()) to indicate otherwise 
+--   (Right ()) to indicate otherwise. Eventually we will
+--   also need to pass other functions 
 evalS :: Statement -> ExceptT C0Value (StateT Context IO) ()
-evalS = \case 
+evalS = \case   
   VariableDeclStmnt (varName -> n) -> lift $ modify (insertVar n undefined)
   DeclAssign (varName -> n) value -> lift (evalE value) >>= \c -> lift $ modify (insertVar n c) 
   -- We need special treatment of lvalues here

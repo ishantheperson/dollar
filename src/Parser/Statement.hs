@@ -75,14 +75,14 @@ simple = assign <|> inc <|> dec -- <|> (FunctionCallStmnt <$> expression)
               rhs <- expression 
               return $ case op' of 
                 Nothing -> DeclAssign d rhs 
-                Just compoundOp -> DeclAssign d (BinOp compoundOp (Identifier $ varName d) rhs)
+                Just compoundOp -> DeclAssign d (BinOp (ArithOp compoundOp) (Identifier $ varName d) rhs)
 
             (Right _, Nothing) -> fail "" -- This case is handled by inc/dec, but we could change it 
             (Right lhs, Just op') -> do 
               rhs <- expression
               return $ case op' of 
                 Nothing -> Assign lhs rhs 
-                Just compoundOp -> Assign lhs (BinOp compoundOp lhs rhs)
+                Just compoundOp -> Assign lhs (BinOp (ArithOp compoundOp) lhs rhs)
 
         inc = try $ Increment <$> expression <* symbol "++"
         dec = try $ Decrement <$> expression <* symbol "--"
