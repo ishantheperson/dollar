@@ -23,8 +23,11 @@ test p fileName input =
     Left err -> errorBundlePretty err 
     Right v ->  show v
 
+-- | Skips leading whitespace, then calls parser p on input until EOF
+--   Crashes and prints the error when it encounters one, otherwise 
+--   returns the parsed value 
 test' p input = 
-  case evalState (runParserT (p <* eof) "" input) defaultState of 
+  case evalState (runParserT (sc >> (p <* eof)) "" input) defaultState of 
     Left err -> error $ errorBundlePretty err 
     Right v -> v 
 

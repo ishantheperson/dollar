@@ -18,23 +18,27 @@ import Control.Monad.Trans
 import Control.Monad.Trans.Except 
 import Control.Monad.Trans.State.Strict
 
+type Evaluator = StateT Context IO
+runEvalT = flip runStateT emptyContext 
+
+
 --evalFunction :: Function -> [C0Value] -> IO () 
-evalFunction f args = 
+evalFunction f fs args = 
   let initialContext = fromMap . Map.fromList $ zip (map varName (functionArgDecls f)) args 
       requires = filter ((==) Requires . getContractType) (functionContracts f)
       ensures = filter ((==) Ensures . getContractType) (functionContracts f)
       
   in runStateT (runFunction initialContext requires ensures) initialContext
   where runFunction c requires ensures = do 
-          put c :: StateT Context IO ()
+          put c :: Evaluator ()
           -- Contracts 
-          preconditionsMet <- c0BoolAnd <$> mapM (evalE . getContractBody) requires
+          preconditionsMet <- c0BoolAnd <$> mapM (evalE fs . getContractBody) requires
           when (not preconditionsMet) (liftIO $ ioError (userError "Requires failed"))
 
-          Left retVal <- runExceptT (traverse evalS (functionBody f))
+          Left retVal <- runExceptT (traverse (evalS fs) (functionBody f))
           modify' $ insertVar "\\result" retVal
 
-          postconditionsMet <- c0BoolAnd <$> mapM (evalE . getContractBody) ensures 
+          postconditionsMet <- c0BoolAnd <$> mapM (evalE fs . getContractBody) ensures 
           when (not postconditionsMet) (liftIO $ ioError (userError "Ensures failed"))
 
           return retVal
@@ -45,18 +49,18 @@ evalFunction f args =
 -- | Returns (Left v1) to indicate the function returned
 --   (Right ()) to indicate otherwise. Eventually we will
 --   also need to pass other functions 
-evalS :: Statement -> ExceptT C0Value (StateT Context IO) ()
-evalS = \case   
+evalS :: [Function] -> Statement -> ExceptT C0Value Evaluator ()
+evalS fs = \case   
   VariableDeclStmnt (varName -> n) -> lift $ modify (insertVar n undefined)
-  DeclAssign (varName -> n) value -> lift (evalE value) >>= \c -> lift $ modify (insertVar n c) 
+  DeclAssign (varName -> n) value -> lift (evalE fs value) >>= \c -> lift $ modify (insertVar n c) 
   -- We need special treatment of lvalues here
   --Assign n value -> lift (evalE value) >>= \c -> lift $ modify (insertVar n c) 
 
   Return Nothing -> throwE C0VoidVal 
-  Return (Just value) -> (lift $ evalE value) >>= throwE 
+  Return (Just value) -> (lift $ evalE fs value) >>= throwE 
 
-evalE :: Expression -> StateT Context IO C0Value
-evalE = \case 
+evalE :: [Function] -> Expression -> Evaluator C0Value
+evalE fs = \case 
   IntConstant i -> return $ C0IntVal (fromInteger i)
   StringLiteral s -> return $ C0StringVal s 
   CharLiteral c -> return $ C0CharVal c 
@@ -64,31 +68,37 @@ evalE = \case
   Identifier v -> lookupVar v 
   ContractResult -> lookupVar "\\result"
 
+  FunctionCall (Identifier fName) args -> do 
+    let f = findFunction fName fs 
+    argVals <- traverse (evalE fs) args 
+    fst <$> (liftIO $ evalFunction f fs argVals )
+
   -- This can be moved to another file 
   BinOp (ArithOp op) lhs rhs -> do 
-    C0IntVal a <- evalE lhs 
-    C0IntVal b <- evalE rhs 
+    C0IntVal a <- evalE fs lhs 
+    C0IntVal b <- evalE fs rhs 
 
     return . C0IntVal $ (getArithOp op) a b 
 
   -- This means == doesn't work on pointers right now
   BinOp (CmpOp Equal) lhs rhs -> do
-    a <- evalE lhs
-    b <- evalE rhs 
+    a <- evalE fs lhs
+    b <- evalE fs rhs 
 
     return . C0BoolVal $ (a == b)
 
   BinOp (CmpOp NotEqual) lhs rhs -> do
-    a <- evalE lhs
-    b <- evalE rhs 
+    a <- evalE fs lhs
+    b <- evalE fs rhs 
 
     return . C0BoolVal $ (a /= b)
 
   BinOp (CmpOp op) lhs rhs -> do 
-    C0IntVal a <- evalE lhs 
-    C0IntVal b <- evalE rhs 
+    C0IntVal a <- evalE fs lhs 
+    C0IntVal b <- evalE fs rhs 
 
     return . C0BoolVal $ (getCmpOp op) a b 
+  where findFunction name = head . filter ((==) name . functionName)
 
 getArithOp :: ArithOperator -> (Int32 -> Int32 -> Int32)
 getArithOp = \case 

@@ -58,7 +58,7 @@ term = parens expression <|>
         contractResult = ContractResult <$ reserved "\\result" 
         -- might remove this since it's not something
         -- we should check in the parser 
-        guardContract msg = do allowed <- lift get >>= return . isParsingContract . parsingMode
+        guardContract msg = do allowed <- (isParsingContract . parsingMode) <$> lift get
                                when (not allowed) (fail msg)
 
 operators :: [[Operator Parser Expression]]

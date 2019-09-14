@@ -18,7 +18,7 @@ data Context = Context {
 emptyContext = Context Map.empty Nothing 
 
 -- throw IO error if var doesnt exist 
-lookupVar name = return . go name =<< get
+lookupVar name = go name <$> get
   where go name context = 
           case Map.lookup name (getCurrentScope context) of 
             Just v -> v 
@@ -39,3 +39,9 @@ popScope = fromJust . getParentScope
 
 fromMap :: VarMap -> Context 
 fromMap = flip Context Nothing
+
+getAllVars :: Context -> [VariableDecl]
+getAllVars c = map (flip VariableDecl C0Void) (Map.keys (getCurrentScope c)) ++ rest 
+  where rest = case getParentScope c of 
+                 Nothing -> []
+                 Just parent -> getAllVars parent 
