@@ -2,10 +2,9 @@
 module Parser.Types where
 
 import Parser.Lexer 
-import Parser.AST
+import AST
 
-import Text.Megaparsec
-import Text.Megaparsec.Char
+import Text.Megaparsec  
 import Text.Megaparsec.Debug
 
 import Data.Functor

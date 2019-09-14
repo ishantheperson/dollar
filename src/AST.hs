@@ -1,4 +1,4 @@
-module Parser.AST where 
+module AST where 
 
 data VariableDecl = VariableDecl { varName :: String, varType :: C0Type } deriving Show 
 
@@ -25,6 +25,7 @@ data Expression = -- Terms
 
                 | Alloc C0Type
                 | AllocArray C0Type Expression  
+                | NullConst
 
                 | ContractLength Expression
                 | HasTag C0Type Expression
@@ -37,10 +38,14 @@ data Expression = -- Terms
 -- Note that ++ and -- are missing because they are actually
 -- not expressions, instead they can only be used as statements in C0
 
-data BinOperator = Plus | Minus | Multiply | Mod | Divide 
-                 | BitAnd | BitOr | Xor | LeftShift | RightShift 
-                 | BoolAnd | BoolOr
-                 | Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual deriving Show
+data BinOperator = ArithOp ArithOperator | BoolOp BoolOperator | CmpOp CmpOperator deriving Show  
+
+data ArithOperator = Plus | Minus | Multiply | Mod | Divide | BitAnd 
+                   | BitOr | Xor | LeftShift | RightShift deriving Show 
+
+data BoolOperator = BoolAnd | BoolOr deriving Show 
+data CmpOperator = Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual deriving Show 
+
 data UnaryOperator =
     -- | Integer negation e.g. -1
     Negate
@@ -58,8 +63,11 @@ data C0Type = C0Int -- prefixed with C0 to avoid name collisions with Haskell ty
             | C0Typedef String 
             | C0Pointer C0Type
             | C0Struct String 
-            | C0Array C0Type deriving Show 
+            | C0Array C0Type deriving (Show, Eq) 
             -- also need function ptr types
+
+--unifyTypes a b = do 
+
 
 data Statement = VariableDeclStmnt VariableDecl
                | DeclAssign VariableDecl Expression

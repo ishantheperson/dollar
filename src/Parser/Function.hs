@@ -4,7 +4,7 @@ module Parser.Function where
 import Parser.Lexer 
 import Parser.Statement 
 import Parser.Types 
-import Parser.AST
+import AST
 import Parser.Contract
 
 import Text.Megaparsec

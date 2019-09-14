@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 module Parser.C0ParserState where 
 
-import Parser.AST
+import AST
 
 --import qualified Data.Map.Strict as Map
 -- import Control.Arrow ((>>>))

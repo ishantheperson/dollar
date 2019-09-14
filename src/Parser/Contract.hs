@@ -2,7 +2,7 @@ module Parser.Contract where
 
 import Parser.Lexer
 import Parser.Expression 
-import Parser.AST 
+import AST 
 import Parser.C0ParserState
 
 import Control.Monad.State

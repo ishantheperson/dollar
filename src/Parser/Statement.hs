@@ -1,7 +1,7 @@
 module Parser.Statement where 
 
 import Parser.Lexer
-import Parser.AST
+import AST
 import Parser.Types
 import Parser.Expression
 import Parser.Contract
@@ -11,6 +11,7 @@ import Text.Megaparsec.Debug
 
 import Data.Functor
      
+-- | Parses a single statement, including a semicolon
 statement = statementBlock <|>
             ifStatement <|>
             whileLoop <|>
@@ -20,7 +21,8 @@ statement = statementBlock <|>
             errorStatement <* semicolon <|>
             (StatementContract <$> nonemptyContractBlock) <|>
             simple <* semicolon
-               
+
+-- | Parses a single if and optionally else statement,
 ifStatement = do 
   reserved "if"
   condition <- parens expression

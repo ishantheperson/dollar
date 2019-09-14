@@ -2,7 +2,7 @@
 module Parser.Expression where
 
 import Parser.Lexer 
-import Parser.AST
+import AST
 import Parser.Types
 import Parser.C0ParserState
 
@@ -44,7 +44,9 @@ term = parens expression <|>
        CharLiteral <$> charLiteral <|>
        BoolLiteral True <$ symbol "true" <|>
        BoolLiteral False <$ symbol "false" <|>
+       NullConst <$ symbol "NULL" <|>
        Identifier <$> identifier 
+
   where alloc = Alloc <$> (reserved "alloc" *> parens parseType)
         allocArray = do reserved "alloc_array"
                         parens (AllocArray <$> (parseType <* symbol ",") <*> expression)   
@@ -65,31 +67,31 @@ operators = [[prefixOp Negate "-",
               prefixOp BoolNot "!",
               prefixOp PointerDeref "*"],
 
-             [binOp' Multiply "*",
-              binOp' Divide "/",
-              binOp' Mod "%"],
+             [binOp' (ArithOp Multiply) "*",
+              binOp' (ArithOp Divide) "/",
+              binOp' (ArithOp Mod) "%"],
 
               -- Prevents problems with a++ or a +=
-             [InfixL ((BinOp Plus) <$ (try $ symbol "+" <* notFollowedBy (oneOf "+="))),
-              InfixL ((BinOp Minus) <$ (try $ symbol "-" <* notFollowedBy (oneOf "-=")))],
+             [InfixL ((BinOp $ ArithOp Plus) <$ (try $ symbol "+" <* notFollowedBy (oneOf "+="))),
+              InfixL ((BinOp $ ArithOp Minus) <$ (try $ symbol "-" <* notFollowedBy (oneOf "-=")))],
 
-             [binOp' LeftShift "<<",
-              binOp' RightShift ">>"],
+             [binOp' (ArithOp LeftShift) "<<",
+              binOp' (ArithOp RightShift) ">>"],
 
-             [binOp'' Less "<",
-              binOp'' LessEqual "<=",
-              binOp'' Greater ">",
-              binOp'' GreaterEqual ">="],
+             [binOp'' (CmpOp Less) "<",
+              binOp'' (CmpOp LessEqual) "<=",
+              binOp'' (CmpOp Greater) ">",
+              binOp'' (CmpOp GreaterEqual) ">="],
 
-             [binOp Equal "==",
-              binOp NotEqual "!="],
+             [binOp (CmpOp Equal) "==",
+              binOp (CmpOp NotEqual) "!="],
 
-             [binOp'' BitAnd "&"],
-             [binOp' Xor "^"],
-             [binOp'' BitOr "|"],
+             [binOp'' (ArithOp BitAnd) "&"],
+             [binOp' (ArithOp Xor) "^"],
+             [binOp'' (ArithOp BitOr) "|"],
 
-             [binOp BoolAnd "&&"],
-             [binOp BoolOr "||"],
+             [binOp (BoolOp BoolAnd) "&&"],
+             [binOp (BoolOp BoolOr) "||"],
              
              [TernR ((Ternary <$ symbol ":") <$ symbol "?")]
              ]
