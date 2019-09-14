@@ -8,28 +8,35 @@ import Parser
 import Repl
 
 import Control.Monad
-import Text.Megaparsec
+import Text.Megaparsec (many)
 
+import System.Console.GetOpt
 import System.Environment (getArgs)
+import System.Exit (exitFailure)
 
-getContents' = getContents >>= \s -> length s `seq` return s
+data Flag = ShowIntBase Int | EnableContracts deriving (Show, Eq)
 
---main :: IO ()
+options = [ Option ['x'] ["hex"] (NoArg $ ShowIntBase 16) "prints out integers in hex" ]
+
+main :: IO ()
 main = getArgs >>= \case 
   [] -> do 
-    putStrLn "Reading from stdin..."
-    stdin <- getContents' 
-    let decls = parse stdin 
-        fs = filter isParsedFunctionDecl decls 
-
-    repl (map (\(FunctionDecl f) -> f) fs)
-  
+    putStrLn "Dollar version -1"
+    
   file:_ -> do 
     fileContents <- readFile file 
-    let decls = parse fileContents 
-        fs = filter isParsedFunctionDecl decls 
+    decls <- case parseDecls file fileContents of 
+               Left err -> do putStrLn err 
+                              exitFailure
+               Right v -> return v 
+
+    let fs = filter isParsedFunctionDecl decls 
+
 
     repl (map (\(FunctionDecl f) -> f) fs)
+    return () 
+  where parseDecls = parse (many generalDecl) 
+
 {-
   files -> do 
     decls <- concat <$> forM files $ \file -> do 
@@ -39,7 +46,6 @@ main = getArgs >>= \case
 
     repl (map (\(FunctionDecl f) -> f) decls)
 -}
-  where parse = test (many generalDecl) "(stdin)"
 
 {-
 main = getArgs >>= \case 
