@@ -98,6 +98,14 @@ evalE fs = \case
     C0IntVal b <- evalE fs rhs 
 
     return . C0BoolVal $ (getCmpOp op) a b 
+
+  BinOp (BoolOp op) lhs rhs -> do 
+    C0BoolVal a <- evalE fs lhs 
+    C0BoolVal b <- evalE fs rhs 
+
+    return . C0BoolVal $ (getBoolOp op) a b 
+
+  x -> error $ "not yet implemented: " ++ show x 
   where findFunction name = head . filter ((==) name . functionName)
 
 getArithOp :: ArithOperator -> (Int32 -> Int32 -> Int32)

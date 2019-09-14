@@ -17,11 +17,11 @@ import qualified Text.Megaparsec.Char.Lexer as Lex
 type Parser = ParsecT Void String (State C0ParserState)
 --type Parser = Parsec Void String 
 
-test :: Show a => Parser a -> FilePath -> String -> String
+test :: Show a => Parser a -> FilePath -> String -> a
 test p fileName input = 
-  case evalState (runParserT (p <* eof) fileName input) defaultState of 
-    Left err -> errorBundlePretty err 
-    Right v ->  show v
+  case evalState (runParserT (sc >> (p <* eof)) fileName input) defaultState of 
+    Left err -> error $ errorBundlePretty err 
+    Right v ->  v
 
 -- | Skips leading whitespace, then calls parser p on input until EOF
 --   Crashes and prints the error when it encounters one, otherwise 

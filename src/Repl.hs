@@ -29,6 +29,9 @@ loop fs = do
   getInputLine "$> " >>= \case
     Nothing -> return ()
     Just "#quit" -> return ()
+    Just "#functions" -> do 
+      forM_ fs (outputStrLn . show)
+      loop fs 
     Just input -> do 
       let parseResult = test' replParser input 
       result <- lift $ case parseResult of 
