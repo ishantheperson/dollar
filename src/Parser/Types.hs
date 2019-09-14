@@ -38,9 +38,10 @@ parseType = simple >>= postfix
                      postfix $ C0Array t
 
         simple = 
-          reserved "int" $> C0Int<|>
-          reserved "char" $> C0Char <|>
-          reserved "string" $> C0String<|>
-          reserved "void" $> C0Void <|>
-          reserved "bool" $> C0Bool <|>
+          C0Int <$ reserved "int" <|>
+          C0Char <$ reserved "char" <|>
+          C0String <$ reserved "string" <|>
+          C0Void <$ reserved "void" <|>
+          C0Bool <$ reserved "bool" <|>
+          (C0Struct <$ reserved "struct" <*> identifier) <|>
           C0Typedef <$> identifier 

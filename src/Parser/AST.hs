@@ -57,6 +57,7 @@ data C0Type = C0Int -- prefixed with C0 to avoid name collisions with Haskell ty
             | C0Void
             | C0Typedef String 
             | C0Pointer C0Type
+            | C0Struct String 
             | C0Array C0Type deriving Show 
             -- also need function ptr types
 
