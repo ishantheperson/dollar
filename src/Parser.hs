@@ -4,12 +4,14 @@ import Parser.Lexer
 import Parser.Expression 
 import Parser.Function 
 import Parser.Types
+import Parser.AST
 
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
 data Decl = Typedef String C0Type 
-          | FunctionDecl Function
+          | FunctionDecl Function deriving Show
 
-generalDecl = (uncurry Typedef <$> typedef) <|> (Function <$> function) <* semicolon
+generalDecl = (try $ (uncurry Typedef <$> typedef) <* semicolon) <|> 
+              (FunctionDecl <$> functionDef)
   

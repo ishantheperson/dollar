@@ -18,7 +18,7 @@ lineContract = do
   symbol "//@"
 
   oldState <- get
-  lift $ put (C0ParserState LineContract)
+  lift $ put (setParserMode LineContract oldState)
 
   contracts <- contract `endBy1` semicolon 
 
@@ -30,7 +30,7 @@ lineContract = do
 blockContract = do 
   symbol "/*@"
   oldState <- get
-  lift $ put (C0ParserState BlockContract)
+  lift $ put (setParserMode BlockContract oldState)
 
   contracts <- contract `endBy1` semicolon
 

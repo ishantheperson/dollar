@@ -18,10 +18,10 @@ variableDecl = do
 
 typedef = do 
   reserved "typedef"
-  typeName <- identifier 
   typeValue <- parseType
+  typeName <- identifier 
   
-  --semicolon
+  --semicolon 
 
   return (typeName, typeValue)
 

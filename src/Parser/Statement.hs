@@ -60,21 +60,27 @@ errorStatement = Error <$> (reserved "error" *> expression)
 
 statementBlock = StatementBlock <$> (braces $ many statement)
 
-simple = assign <|> inc <|> dec <|> (FunctionCallStmnt <$> expression)
-  where assign = do 
+simple = assign <|> inc <|> dec -- <|> (FunctionCallStmnt <$> expression)
+  where assign = try $ do 
           (lhs, op) <- try $ do
-                         lhs <- (Right <$> expression) <|> (Left <$> variableDecl); 
-                         op <- choice opParsers               
+                         lhs <- (try (Left <$> variableDecl)) <|> (try (Right <$> expression)); 
+                         op <-  (try (Just <$> choice opParsers)) <|> return Nothing 
                          return (lhs, op)
 
-          rhs <- expression
+          case (lhs, op) of 
+            (Left d, Nothing) -> return $ VariableDeclStmnt d 
+            (Left d, Just op') -> do 
+              rhs <- expression 
+              return $ case op' of 
+                Nothing -> DeclAssign d rhs 
+                Just compoundOp -> DeclAssign d (BinOp compoundOp (Identifier $ varName d) rhs)
 
-          return $ case (lhs, op) of 
-                     (_, Nothing) -> Assign lhs rhs 
-                     ((Left dec), Just constructor) -> 
-                        Assign lhs (BinOp constructor (Identifier $ varName dec) rhs)
-                     (Right lhsExp, Just constructor) ->
-                        Assign lhs (BinOp constructor lhsExp rhs)
+            (Right _, Nothing) -> fail "" -- This case is handled by inc/dec, but we could change it 
+            (Right lhs, Just op') -> do 
+              rhs <- expression
+              return $ case op' of 
+                Nothing -> Assign lhs rhs 
+                Just compoundOp -> Assign lhs (BinOp compoundOp lhs rhs)
 
         inc = try $ Increment <$> expression <* symbol "++"
         dec = try $ Decrement <$> expression <* symbol "--"

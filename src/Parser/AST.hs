@@ -61,7 +61,9 @@ data C0Type = C0Int -- prefixed with C0 to avoid name collisions with Haskell ty
             | C0Array C0Type deriving Show 
             -- also need function ptr types
 
-data Statement = Assign (Either VariableDecl Expression) Expression
+data Statement = VariableDeclStmnt VariableDecl
+               | DeclAssign VariableDecl Expression
+               | Assign Expression Expression
                | Increment Expression
                | Decrement Expression
                | IfStatement Expression Statement (Maybe Statement)

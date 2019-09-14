@@ -11,11 +11,11 @@ isParsingContract = \case Regular -> False
                           _ -> True 
 
 data C0ParserState = C0ParserState {
-                       parsingMode :: ParsingMode 
+                       parsingMode :: ParsingMode
+--                       knownFunctions :: [Function],
+--                       knownTypedefs :: []
                      } deriving Show -- might need lenses *sigh*
 
 defaultState = C0ParserState Regular 
 
---addTypedef name typeValue = 
---  (lift modify) (knownTypedefs >>> 
---    Map.insertWith (\_ _ -> fail "duplicate typedef") name typeValue)
+setParserMode mode oldState = oldState { parsingMode = mode }

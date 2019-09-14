@@ -8,7 +8,7 @@ import Parser.AST
 import Parser.Contract
 
 import Text.Megaparsec
---import Text.Megaparsec.Debug
+import Text.Megaparsec.Debug
 --import Text.Megaparsec.Combinator
 
 functionHeader = do 
