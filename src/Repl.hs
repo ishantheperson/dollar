@@ -13,8 +13,6 @@ import Parser.Lexer
 
 import Data.List (isPrefixOf)
 import Data.Maybe (mapMaybe)
-import Data.Foldable (for_)
-import Data.Functor ((<&>))
 
 import Control.Monad.State
 import Control.Monad.Trans.Except
@@ -22,7 +20,7 @@ import Control.Monad.Trans.Except
 import System.Console.Haskeline
 
 --repl :: [Function] -> IO () 
-repl fs = runEvalT $ runInputT settings (loop fs)
+repl fs = runEvalT $ runInputT (settings fs) (loop fs)
 
 loop :: [Function] -> InputT Evaluator ()
 loop fs = do 
@@ -30,7 +28,7 @@ loop fs = do
     Nothing -> return ()
     Just "#quit" -> return ()
     Just "#functions" -> do 
-      forM_ fs (outputStrLn . show)
+      forM_ fs (outputStrLn . functionName)
       loop fs 
     Just input -> do 
       let parseResult = test' replParser input 
@@ -45,13 +43,17 @@ loop fs = do
 -- this one keeping track of functions. Then we can also
 -- get TAB completion for functions instead of just for
 -- variables like we do now
-settings :: Settings (Evaluator)
-settings = setComplete completer (defaultSettings { historyFile = Just ".dollarHistory" })
-  where completer = completeWord Nothing " \t" findCompletion
+settings :: [Function] -> Settings (Evaluator)
+settings fs = setComplete completer (defaultSettings { historyFile = Just ".dollarHistory" })
+  where completer = completeWord Nothing " \t" (findCompletion fs)
 
-findCompletion :: String -> Evaluator [Completion] 
-findCompletion s = do 
+findCompletion :: [Function] -> String -> Evaluator [Completion] 
+findCompletion fs s = do 
   vars <- gets getAllVars
+  let funcNames = map functionName fs 
+      varNames = map varName vars 
+
+      names = funcNames ++ varNames 
   return $ mapMaybe (\v -> if s `isPrefixOf` v  
                              then Just $ simpleCompletion v
-                             else Nothing) (map varName vars)
+                             else Nothing) names 
