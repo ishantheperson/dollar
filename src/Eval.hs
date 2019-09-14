@@ -9,7 +9,7 @@ import Data.Bits
 import Data.Int 
 import qualified Data.Map.Strict as Map 
 
-import Data.Maybe (fromJust, fromMaybe)
+import Data.Maybe (fromMaybe)
 
 import Control.Arrow
 
@@ -27,11 +27,17 @@ evalFunction f args =
   in runStateT (runFunction initialContext requires ensures) initialContext
   where runFunction c requires ensures = do 
           put c :: StateT Context IO ()
-          -- Check contracts here
-          preconditionsMet :: Bool <- c0BoolAnd <$> ((mapM (evalE . getContractBody) requires) :: StateT Context IO [C0Value])
+          -- Contracts 
+          preconditionsMet <- c0BoolAnd <$> mapM (evalE . getContractBody) requires
           when (not preconditionsMet) (liftIO $ ioError (userError "Requires failed"))
 
-          runExceptT (traverse evalS (functionBody f))
+          Left retVal <- runExceptT (traverse evalS (functionBody f))
+          modify' $ insertVar "\\result" retVal
+
+          postconditionsMet <- c0BoolAnd <$> mapM (evalE . getContractBody) ensures 
+          when (not postconditionsMet) (liftIO $ ioError (userError "Ensures failed"))
+
+          return retVal
 
         c0BoolAnd = \case [] -> True 
                           (C0BoolVal b):xs -> b && c0BoolAnd xs 
@@ -56,12 +62,33 @@ evalE = \case
   CharLiteral c -> return $ C0CharVal c 
   BoolLiteral b -> return $ C0BoolVal b 
   Identifier v -> lookupVar v 
+  ContractResult -> lookupVar "\\result"
 
+  -- This can be moved to another file 
   BinOp (ArithOp op) lhs rhs -> do 
     C0IntVal a <- evalE lhs 
     C0IntVal b <- evalE rhs 
 
     return . C0IntVal $ (getArithOp op) a b 
+
+  -- This means == doesn't work on pointers right now
+  BinOp (CmpOp Equal) lhs rhs -> do
+    a <- evalE lhs
+    b <- evalE rhs 
+
+    return . C0BoolVal $ (a == b)
+
+  BinOp (CmpOp NotEqual) lhs rhs -> do
+    a <- evalE lhs
+    b <- evalE rhs 
+
+    return . C0BoolVal $ (a /= b)
+
+  BinOp (CmpOp op) lhs rhs -> do 
+    C0IntVal a <- evalE lhs 
+    C0IntVal b <- evalE rhs 
+
+    return . C0BoolVal $ (getCmpOp op) a b 
 
 getArithOp :: ArithOperator -> (Int32 -> Int32 -> Int32)
 getArithOp = \case 
@@ -79,6 +106,15 @@ getArithOp = \case
 
   where shiftL' a b = shiftL a (fromIntegral b)
         shiftR' a b = shiftR a (fromIntegral b)
+
+getCmpOp :: CmpOperator -> (Int32 -> Int32 -> Bool)
+getCmpOp = \case 
+  Equal -> (==)
+  NotEqual -> (/=)
+  Less -> (<)
+  LessEqual -> (<=)
+  Greater -> (>)
+  GreaterEqual -> (>=)  
 
 getBoolOp :: BoolOperator -> (Bool -> Bool -> Bool)
 getBoolOp = \case 

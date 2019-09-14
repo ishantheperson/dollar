@@ -15,7 +15,7 @@ data C0Value = C0StringVal String
 
              | C0PointerVal C0Type (Maybe (IORef C0Value)) -- ^ Nothing indicates NULL
              | C0ArrayVal C0Type (IOArray Int32 C0Value) -- ^ C0 arrays cannot be NULL
-                 deriving Show
+                 deriving (Show, Eq)
 
 instance Show (IORef a) where 
   show = const "<io ref>"
