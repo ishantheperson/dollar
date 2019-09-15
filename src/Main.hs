@@ -26,7 +26,7 @@ main = do
   putStrLn "For help, type #help"
 
   getArgs >>= \case 
-    [] -> return () 
+    [] -> () <$ repl []  
       
     file:_ -> do 
       fileContents <- readFile file 

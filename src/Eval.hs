@@ -77,6 +77,11 @@ evalE fs = \case
   BoolLiteral b -> return $ C0BoolVal b 
   Identifier v -> lookupVar v 
   ContractResult -> lookupVar "\\result"
+  Ternary e t f -> do 
+    C0BoolVal b <- evalE fs e 
+    if b 
+      then evalE fs t 
+      else evalE fs f 
 
   AllocArray t numExp -> do 
     C0IntVal n <- evalE fs numExp
