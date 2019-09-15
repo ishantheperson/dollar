@@ -7,8 +7,6 @@ import AST
 import Text.Megaparsec  
 import Text.Megaparsec.Debug
 
-import Data.Functor
-
 variableDecl = do 
   varType <- parseType
   varName <- identifier

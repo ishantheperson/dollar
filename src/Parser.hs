@@ -21,4 +21,4 @@ generalDecl = (try $ (uncurry Typedef <$> typedef) <* semicolon) <|>
               (FunctionDecl <$> functionDef)
 
 replParser :: Parser (Either Expression Statement)
-replParser = try (Left <$> expression <* option [] semicolon) <|> (Right <$> statement)
+replParser = (Right <$> try statement) <|> (Left <$> try expression <* option [] semicolon) 

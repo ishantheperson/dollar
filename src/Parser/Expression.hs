@@ -51,7 +51,7 @@ term = parens expression <|>
         allocArray = do reserved "alloc_array"
                         parens (AllocArray <$> (parseType <* symbol ",") <*> expression)   
                         
-        contractLength = do guardContract "\\length only allowed in contracts" -- experimental
+        contractLength = do --guardContract "\\length only allowed in contracts" -- experimental
                             reserved "\\length" *> parens (ContractLength <$> expression)
         hasTag = do reserved "\\hastag" 
                     parens (HasTag <$> (parseType <* symbol ",") <*> expression)

@@ -8,7 +8,6 @@ import Control.Monad.State.Strict
 --import Control.Monad.Writer.Strict -- TODO: for error recovery 
 
 import Data.Void 
-import Data.Int
 
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char

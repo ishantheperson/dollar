@@ -7,6 +7,7 @@ import Eval.Context
 
 import Data.Bits 
 import Data.Int 
+import Data.Array.IO
 import qualified Data.Map.Strict as Map 
 
 import Data.Maybe (fromMaybe)
@@ -47,14 +48,23 @@ evalFunction f fs args =
                           (C0BoolVal b):xs -> b && c0BoolAnd xs 
 
 -- | Returns (Left v1) to indicate the function returned
---   (Right ()) to indicate otherwise. Eventually we will
---   also need to pass other functions 
+--   (Right ()) to indicate otherwise. 
+--   Reader monad might help...
 evalS :: [Function] -> Statement -> ExceptT C0Value Evaluator ()
 evalS fs = \case   
-  VariableDeclStmnt (varName -> n) -> lift $ modify (insertVar n undefined)
+  VariableDeclStmnt (varName -> n) -> lift $ modify (insertVar n undefined) -- wow laziness at work 
   DeclAssign (varName -> n) value -> lift (evalE fs value) >>= \c -> lift $ modify (insertVar n c) 
   -- We need special treatment of lvalues here
-  --Assign n value -> lift (evalE value) >>= \c -> lift $ modify (insertVar n c) 
+  Assign (Identifier name) rhs -> do 
+    val <- lift $ evalE fs rhs 
+    lift $ modify (insertVar name val)
+
+  Assign (ArrayAccess arrayExp indexExp) rhs -> do 
+    C0ArrayVal _ array <- lift $ evalE fs arrayExp 
+    C0IntVal i <- lift $ evalE fs indexExp
+    val <- lift $ evalE fs rhs 
+
+    liftIO $ writeArray array i val 
 
   Return Nothing -> throwE C0VoidVal 
   Return (Just value) -> (lift $ evalE fs value) >>= throwE 
@@ -68,10 +78,24 @@ evalE fs = \case
   Identifier v -> lookupVar v 
   ContractResult -> lookupVar "\\result"
 
+  AllocArray t numExp -> do 
+    C0IntVal n <- evalE fs numExp
+    liftIO $ C0ArrayVal t <$> newArray (0, n - 1) (c0DefaultValue t)
+
+  ArrayAccess arrayExp indexExp -> do 
+    C0ArrayVal t a <- evalE fs arrayExp
+    C0IntVal n <- evalE fs indexExp 
+
+    liftIO $ readArray a n 
+
+  ContractLength a -> do 
+    C0ArrayVal _ array <- evalE fs a 
+    C0IntVal . snd <$> liftIO (getBounds array) 
+
   FunctionCall (Identifier fName) args -> do 
     let f = findFunction fName fs 
     argVals <- traverse (evalE fs) args 
-    fst <$> (liftIO $ evalFunction f fs argVals )
+    fst <$> (liftIO $ evalFunction f fs argVals)
 
   -- This can be moved to another file 
   BinOp (ArithOp op) lhs rhs -> do 
