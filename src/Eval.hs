@@ -2,17 +2,17 @@
 module Eval where 
 
 import AST
-import Eval.C0Value
 import Eval.Context 
+import Eval.Builtin
 
 import Data.Bits 
 import Data.Int 
 import Data.Array.IO
 import qualified Data.Map.Strict as Map 
 
-import Data.Maybe (fromMaybe)
+--import Data.Maybe (fromMaybe)
 
-import Control.Arrow
+--import Control.Arrow
 
 import Control.Monad
 import Control.Monad.Trans
@@ -36,7 +36,12 @@ evalFunction f fs args =
           preconditionsMet <- c0BoolAnd <$> mapM (evalE fs . getContractBody) requires
           when (not preconditionsMet) (liftIO $ ioError (userError "Requires failed"))
 
-          Left retVal <- runExceptT (traverse (evalS fs) (functionBody f))
+          let (C0FunctionBody interpertedFunctionBody) = functionBody f 
+          Left retVal <- case functionBody f of 
+                           NativeFunctionBody fb -> Left <$> liftIO (fb args)
+                           C0FunctionBody fb -> runExceptT (traverse (evalS fs) (interpertedFunctionBody))
+
+          --Left retVal <- runExceptT (traverse (evalS fs) (interpertedFunctionBody))
           modify' $ insertVar "\\result" retVal
 
           postconditionsMet <- c0BoolAnd <$> mapM (evalE fs . getContractBody) ensures 
@@ -79,9 +84,7 @@ evalE fs = \case
   ContractResult -> lookupVar "\\result"
   Ternary e t f -> do 
     C0BoolVal b <- evalE fs e 
-    if b 
-      then evalE fs t 
-      else evalE fs f 
+    evalE fs $ if b then t else f  
 
   AllocArray t numExp -> do 
     C0IntVal n <- evalE fs numExp
@@ -109,7 +112,6 @@ evalE fs = \case
 
     return . C0IntVal $ (getArithOp op) a b 
 
-  -- This means == doesn't work on pointers right now
   BinOp (CmpOp Equal) lhs rhs -> do
     a <- evalE fs lhs
     b <- evalE fs rhs 

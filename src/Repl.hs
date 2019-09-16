@@ -1,15 +1,15 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, TupleSections #-}
 module Repl where 
 
 import AST
 
 import Eval
 import Eval.Context
-import Eval.C0Value 
 
 import Parser
 --import Parser.Expression 
 import Parser.Lexer 
+import Parser.C0ParserState
 
 import Data.List (isPrefixOf)
 import Data.Maybe (mapMaybe)
@@ -19,35 +19,41 @@ import Control.Monad.Trans.Except
 
 import System.Console.Haskeline
 
-repl :: [Function] -> IO ((), Context)
-repl fs = runEvalT $ runInputT (settings fs) (loop fs)
+repl :: [Function] -> C0ParserState -> IO ((), Context)
+repl fs state = runEvalT $ runInputT (settings fs) (loop fs state)
 
 prompt = "\x1b[32;1m$> \x1b[0m"
 
-loop :: [Function] -> InputT Evaluator ()
-loop fs = do 
+-- Evaluator is the state of the "main" function that's always running
+-- in the interpreter 
+loop :: [Function] -> C0ParserState -> InputT Evaluator ()
+loop fs state = do 
   getInputLine prompt >>= \case
     Nothing -> return ()
+    Just "#quit" -> return ()
     Just "#help" -> do 
       outputStrLn "Use #functions to get a list of all functions"
       outputStrLn "Press TAB to complete code in most cases"
       outputStrLn "Use #quit (or CTRL D) to quit"
-      loop fs 
-    Just "#quit" -> return ()
+      loop fs state
+       
     Just "#functions" -> do 
       if null fs 
         then outputStrLn "(no functions declared)"
         else forM_ fs (outputStrLn . functionName)
-      loop fs 
+      loop fs state 
 
     Just input -> do 
-      let parseResult = test' replParser input 
-      result <- lift $ case parseResult of 
-                  Left e -> evalE fs e 
-                  Right stmnt -> C0VoidVal <$ (runExceptT $ evalS fs stmnt)
+      let parseResult = parse replParser "(input)" input state 
+      case parseResult :: Either String (Either Expression Statement, C0ParserState)of 
+        Left err -> outputStrLn err >> loop fs state 
+        Right (result', state') -> do 
+          (result, state') <- lift $ case result' of 
+            Left e -> (,state') <$> evalE fs e
+            Right stmnt -> (,state') <$> (C0VoidVal <$ (runExceptT $ evalS fs stmnt))
 
-      outputStrLn =<< liftIO (showC0Value result)
-      loop fs
+          outputStrLn =<< liftIO (showC0Value result)
+          loop fs state' 
 
 -- Eventually we will change this to another StateT monad,
 -- this one keeping track of functions. Then we can also

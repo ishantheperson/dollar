@@ -22,10 +22,11 @@ test p fileName input =
     Left err -> error $ errorBundlePretty err 
     Right v ->  v
 
-parse p fileName input = 
-  case evalState (runParserT (sc >> (p <* eof)) fileName input) defaultState of 
-    Left err -> Left $ errorBundlePretty err 
-    Right v -> Right v 
+parse :: Parser a -> FilePath -> String -> C0ParserState -> Either String (a, C0ParserState)
+parse p fileName input initialState = 
+  case runState (runParserT (sc >> (p <* eof)) fileName input) initialState of 
+    (Left err, _) -> Left $ errorBundlePretty err 
+    (Right result, state) -> Right (result, state)
 
 -- | Skips leading whitespace, then calls parser p on input until EOF
 --   Crashes and prints the error when it encounters one, otherwise 

@@ -22,5 +22,5 @@ functionHeader = do
 functionDef = do 
   (functionType, functionName, functionArgDecls) <- functionHeader 
   functionContracts <- contractBlock
-  functionBody <- braces (many statement) 
+  functionBody <- C0FunctionBody <$> braces (many statement) 
   return Function{..}

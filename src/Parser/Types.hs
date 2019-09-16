@@ -1,11 +1,15 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, LambdaCase, ScopedTypeVariables #-}
 module Parser.Types where
 
-import Parser.Lexer 
 import AST
+import Parser.C0ParserState
+import Parser.Lexer 
 
 import Text.Megaparsec  
 import Text.Megaparsec.Debug
+
+import Control.Monad.Trans
+import Control.Monad.Trans.State.Strict
 
 variableDecl = do 
   varType <- parseType
@@ -18,9 +22,20 @@ typedef = do
   typeValue <- parseType
   typeName <- identifier 
   
-  --semicolon 
+  --typedefs <- lift $ gets knownTypedefs 
+  let theTypedef = (typeName, flattenType typeValue)
+  lift $ modify (addTypedef theTypedef)
 
-  return (typeName, typeValue)
+  --return (typeName, typeValue)
+  return theTypedef
+
+flattenType :: C0Type -> C0Type
+flattenType = \case 
+  C0Typedef _ t -> flattenType t 
+  C0Pointer t -> C0Pointer $ flattenType t 
+  C0Array t -> C0Array $ flattenType t 
+  other -> other 
+
 
 parseType :: Parser C0Type
 parseType = simple >>= postfix
@@ -34,6 +49,14 @@ parseType = simple >>= postfix
                      symbol "]" 
                      postfix $ C0Array t
 
+        typedefT :: Parser C0Type
+        typedefT = do 
+          s <- identifier
+          maybeT <- lift $ gets (lookupTypedef s)
+          case maybeT of 
+            Just t -> return $ C0Typedef s t 
+            Nothing -> fail $ "unknown typedef name '" ++ s ++ "'" 
+
         simple = 
           C0Int <$ reserved "int" <|>
           C0Char <$ reserved "char" <|>
@@ -41,4 +64,4 @@ parseType = simple >>= postfix
           C0Void <$ reserved "void" <|>
           C0Bool <$ reserved "bool" <|>
           (C0Struct <$ reserved "struct" <*> identifier) <|>
-          C0Typedef <$> identifier 
+          typedefT  

@@ -11,11 +11,18 @@ isParsingContract = \case Regular -> False
                           _ -> True 
 
 data C0ParserState = C0ParserState {
-                       parsingMode :: ParsingMode
+                       parsingMode :: ParsingMode,
 --                       knownFunctions :: [Function],
---                       knownTypedefs :: []
+                       knownTypedefs :: [Typedef]
                      } deriving Show -- might need lenses *sigh*
 
-defaultState = C0ParserState Regular 
+defaultState = C0ParserState Regular []
 
+setParserMode :: ParsingMode -> C0ParserState -> C0ParserState
 setParserMode mode oldState = oldState { parsingMode = mode }
+
+addTypedef :: Typedef -> C0ParserState -> C0ParserState
+addTypedef t oldState = oldState { knownTypedefs = t:knownTypedefs oldState } 
+
+lookupTypedef :: String -> C0ParserState -> Maybe C0Type 
+lookupTypedef s = lookup s . knownTypedefs 

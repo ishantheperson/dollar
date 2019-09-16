@@ -1,7 +1,7 @@
 module Eval.Context where 
 
 import AST
-import Eval.C0Value
+--import Eval.C0Value
 
 import Data.Maybe (fromJust)
 import Control.Monad.Trans.State.Strict
