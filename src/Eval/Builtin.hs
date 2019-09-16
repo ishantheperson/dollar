@@ -5,7 +5,9 @@ import AST
 import Data.Array.MArray
 import Control.Monad
 
-builtinFunctions = [stringToCharArray, println]
+import System.Exit (exitFailure)
+
+builtinFunctions = [stringToCharArray, println, c0Assert, c0Error]
 
 stringToCharArray :: Function
 stringToCharArray = Function {
@@ -35,3 +37,31 @@ println' :: [C0Value] -> IO C0Value
 println' vals = do 
   mapM_ (putStrLn <=< showC0Value) vals 
   return C0VoidVal
+
+c0Assert = Function {
+  functionType = C0Void,
+  functionName = "assert",
+  functionArgDecls = [VariableDecl "condition" C0Bool],
+  functionContracts = [],
+  functionBody = NativeFunctionBody c0Assert'
+}
+
+c0Assert' [C0BoolVal b] = do 
+  when (not b) $ error "Assertion failed"
+  return C0VoidVal
+
+c0Error = Function {
+  functionType = C0Void,
+  functionName = "error",
+  functionArgDecls = [VariableDecl "message" C0String],
+  functionContracts = [],
+  functionBody = NativeFunctionBody c0Error'
+}
+
+c0Error' [C0StringVal b] = do 
+  putStr "\x1b[31;1m"
+  putStr "ERROR: "
+  putStr "\x1b[0m"
+  
+  putStrLn b 
+  exitFailure

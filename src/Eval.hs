@@ -61,7 +61,11 @@ evalFunction f fs args =
 --   Reader monad might help...
 evalS :: [Function] -> Statement -> ExceptT C0Value Evaluator ()
 evalS fs = \case   
-  StatementBlock stmnts -> () <$ traverse (evalS fs) stmnts
+  StatementBlock stmnts -> do 
+    lift $ modify pushScope
+    () <$ traverse (evalS fs) stmnts
+    lift $ modify popScope
+
   VariableDeclStmnt v -> lift $ modify (insertVar (varName v) (c0DefaultValue $ varType v))
   DeclAssign (varName -> n) value -> lift (evalE fs value) >>= \c -> lift $ modify (insertVar n c) 
   -- We need special treatment of lvalues here
@@ -79,6 +83,7 @@ evalS fs = \case
   Return Nothing -> throwE C0VoidVal 
   Return (Just value) -> (lift $ evalE fs value) >>= throwE 
   ForLoop initStatement guardExpression iterationStatement contracts body -> do 
+    lift $ modify pushScope
     evalS fs initStatement
     let loop = do 
           -- TODO: run contracts here
@@ -91,6 +96,19 @@ evalS fs = \case
             loop 
   
     loop 
+    lift $ modify popScope
+
+  WhileLoop guardExpression contracts bodyS -> do 
+    lift $ modify pushScope
+    let loop = do
+          -- Check contracts here
+          C0BoolVal cond <- lift $ evalE fs guardExpression
+          when cond $ do 
+            evalS fs bodyS
+            loop 
+    
+    loop 
+    lift $ modify popScope 
 
   FunctionCallStmnt e -> do () <$ lift (evalE fs e)
                             --returnVal <- lift $ evalE fs e  
@@ -100,10 +118,15 @@ evalS fs = \case
     C0BoolVal b <- lift $ evalE fs cond 
     evalS fs $ if b then ifBodyS else fromMaybe (StatementBlock []) elseBodyS 
 
+{-
   Assert e -> do 
     C0BoolVal b <- lift $ evalE fs e 
     when (not b) (error $ "Assertion failed: " ++ show e)
 
+  Error e -> do 
+    C0StringVal msg <- lift $ evalE fs e 
+    error msg 
+-}
   other -> error $ "unsupported " ++ show other 
 
 evalE :: [Function] -> Expression -> Evaluator C0Value
