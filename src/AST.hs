@@ -128,7 +128,7 @@ data C0Value = C0StringVal String
 -- Because 
 showC0Value :: C0Value -> IO String
 showC0Value = \case 
-  C0StringVal s -> return s 
+  C0StringVal s -> return $ show s 
   C0CharVal c -> return $ show c
   C0IntVal i -> return $ show i -- TODO: number formats via Reader monad 
   C0BoolVal True -> return "true"
@@ -137,7 +137,7 @@ showC0Value = \case
   C0PointerVal _ Nothing -> return "NULL"
   C0ArrayVal _ a -> do arrayElems <- getElems a
                        strings <- mapM showC0Value arrayElems
-                       return $ "{" ++ intercalate "," strings ++ "}"
+                       return $ "{" ++ intercalate ", " strings ++ "}"
 
 c0DefaultValue :: C0Type -> C0Value
 c0DefaultValue = \case 

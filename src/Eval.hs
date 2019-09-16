@@ -37,9 +37,12 @@ evalFunction f fs args =
           when (not preconditionsMet) (liftIO $ ioError (userError "Requires failed"))
 
           let (C0FunctionBody interpertedFunctionBody) = functionBody f 
-          Left retVal <- case functionBody f of 
-                           NativeFunctionBody fb -> Left <$> liftIO (fb args)
-                           C0FunctionBody fb -> runExceptT (traverse (evalS fs) (interpertedFunctionBody))
+          unwrappedRetVal <- case functionBody f of 
+                               NativeFunctionBody fb -> Left <$> liftIO (fb args)
+                               C0FunctionBody fb -> runExceptT (traverse (evalS fs) (interpertedFunctionBody))
+          let retVal = case unwrappedRetVal of 
+                Left e -> e 
+                Right _ -> C0VoidVal 
 
           --Left retVal <- runExceptT (traverse (evalS fs) (interpertedFunctionBody))
           modify' $ insertVar "\\result" retVal
@@ -87,7 +90,12 @@ evalS fs = \case
   
     loop 
 
-  FunctionCallStmnt e -> () <$ (lift $ evalE fs e)
+  FunctionCallStmnt e -> do returnVal <- lift $ evalE fs e  
+                            liftIO $ putStrLn =<< showC0Value returnVal
+  Assert e -> do 
+    C0BoolVal b <- lift $ evalE fs e 
+    when (not b) (error $ "Assertion failed: " ++ show e)
+
   other -> error $ "unsupported " ++ show other 
 
 evalE :: [Function] -> Expression -> Evaluator C0Value
@@ -114,7 +122,7 @@ evalE fs = \case
 
   ContractLength a -> do 
     C0ArrayVal _ array <- evalE fs a 
-    C0IntVal . snd <$> liftIO (getBounds array) 
+    C0IntVal . succ . snd <$> liftIO (getBounds array) 
 
   FunctionCall (Identifier fName) args -> do 
     let f = findFunction fName fs 

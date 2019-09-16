@@ -67,6 +67,8 @@ settings :: [Function] -> Settings Evaluator
 settings fs = setComplete completer (defaultSettings { historyFile = Just ".dollarHistory" })
   where completer = completeWord Nothing " \t" (findCompletion fs)
 
+        completedReservedWords = ["alloc", "alloc_array"]
+
         findCompletion :: [Function] -> String -> Evaluator [Completion] 
         findCompletion fs s = do 
           vars <- gets getAllVars 
@@ -75,7 +77,7 @@ settings fs = setComplete completer (defaultSettings { historyFile = Just ".doll
                                           then Just $ Completion (functionName f ++ "(") (showFunctionHeader f) False
                                           else Nothing 
 
-              otherCompletions = flip mapMaybe ((map varName vars)) $
+              otherCompletions = flip mapMaybe ((map varName vars) ++ completedReservedWords) $
                                    \w -> if s `isPrefixOf` w 
                                            then Just $ simpleCompletion w 
                                            else Nothing
