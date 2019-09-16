@@ -37,7 +37,8 @@ main = do
   getArgs >>= \case 
     [] -> () <$ repl builtinFunctions defaultState
     
-    file:_ -> do 
+    file:[] -> do 
+      putStrLn $ "Now loading '" ++ file ++ "'..."
       fileContents <- readFile file 
       (decls, state) <- case parseDecls file fileContents defaultState of 
                           Left err -> do putStrLn err 
@@ -49,6 +50,8 @@ main = do
       --print =<< snd <$> repl (builtinFunctions ++ (map (\(FunctionDecl f) -> f) fs)) state 
       repl (builtinFunctions ++ (map (\(FunctionDecl f) -> f) fs)) state 
       return () 
+
+    _ -> putStrLn "Error: For now only one file at a time can be loaded (will be fixed soon)"
   where parseDecls = parse (many generalDecl) 
 
 --parseC0File :: FilePath -> StateT C0ParserState IO 

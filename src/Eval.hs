@@ -62,7 +62,7 @@ evalFunction f fs args =
 evalS :: [Function] -> Statement -> ExceptT C0Value Evaluator ()
 evalS fs = \case   
   StatementBlock stmnts -> () <$ traverse (evalS fs) stmnts
-  VariableDeclStmnt (varName -> n) -> lift $ modify (insertVar n undefined) -- wow laziness at work 
+  VariableDeclStmnt v -> lift $ modify (insertVar (varName v) (c0DefaultValue $ varType v))
   DeclAssign (varName -> n) value -> lift (evalE fs value) >>= \c -> lift $ modify (insertVar n c) 
   -- We need special treatment of lvalues here
   Assign (Identifier name) rhs -> do 

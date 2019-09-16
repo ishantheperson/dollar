@@ -7,8 +7,6 @@ import Eval
 import Eval.Context
 
 import Parser
---import Parser.Expression 
-import Parser.Lexer 
 import Parser.C0ParserState
 
 import Data.List (isPrefixOf)
@@ -18,7 +16,7 @@ import Control.Monad.State
 import Control.Monad.Trans.Except
 import Control.Exception
 
-import System.Console.Haskeline
+import System.Console.Haskeline hiding (Handler)
 
 repl :: [Function] -> C0ParserState -> IO ((), Context)
 repl fs state = runEvalT $ runInputT (settings fs) (loop fs state)
@@ -30,8 +28,13 @@ prompt = "\x1b[32;1m$> \x1b[0m"
 loop :: [Function] -> C0ParserState -> InputT Evaluator ()
 loop fs state = do 
   getInputLine prompt >>= \case
-    Nothing -> return ()
-    Just "#quit" -> return ()
+    Nothing -> do
+      outputStrLn "Goodbye"
+      return ()
+    Just "#quit" -> do 
+      outputStrLn "Goodbye"
+      return ()
+      
     Just "#help" -> do 
       outputStrLn "Use #functions to get a list of all functions"
       outputStrLn "Press TAB to complete code in most cases"
@@ -41,11 +44,12 @@ loop fs state = do
     Just "#functions" -> do 
       if null fs 
         then outputStrLn "(no functions declared)"
-        else forM_ fs (outputStrLn . functionName)
+        else forM_ fs (outputStrLn . showFunctionHeader)
       loop fs state 
 
     Just input -> do 
-      let parseResult = parse replParser "(input)" input state 
+      --let parseResult = parse replParser "(input)" input state 
+      let parseResult = replParser input state 
       case parseResult :: Either String (Either Expression Statement, C0ParserState) of 
         Left err -> outputStrLn err >> loop fs state 
         Right (result', state') -> do 
@@ -56,7 +60,7 @@ loop fs state = do
           outputStrLn =<< liftIO (showC0Value result)
           loop fs state' 
 
-evalExceptionHandlers :: [Control.Exception.Handler a]
+evalExceptionHandlers :: [Handler a]
 evalExceptionHandlers = [] 
 
 -- Eventually we will change this to another StateT monad,
