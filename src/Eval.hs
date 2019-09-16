@@ -5,6 +5,7 @@ import AST
 import Eval.Context 
 import Eval.Builtin
 
+import Data.Maybe (fromMaybe)
 import Data.Bits 
 import Data.Int 
 import Data.Array.IO
@@ -60,6 +61,7 @@ evalFunction f fs args =
 --   Reader monad might help...
 evalS :: [Function] -> Statement -> ExceptT C0Value Evaluator ()
 evalS fs = \case   
+  StatementBlock stmnts -> () <$ traverse (evalS fs) stmnts
   VariableDeclStmnt (varName -> n) -> lift $ modify (insertVar n undefined) -- wow laziness at work 
   DeclAssign (varName -> n) value -> lift (evalE fs value) >>= \c -> lift $ modify (insertVar n c) 
   -- We need special treatment of lvalues here
@@ -90,8 +92,14 @@ evalS fs = \case
   
     loop 
 
-  FunctionCallStmnt e -> do returnVal <- lift $ evalE fs e  
-                            liftIO $ putStrLn =<< showC0Value returnVal
+  FunctionCallStmnt e -> do () <$ lift (evalE fs e)
+                            --returnVal <- lift $ evalE fs e  
+                            --liftIO $ putStrLn =<< showC0Value returnVal
+
+  IfStatement cond ifBodyS elseBodyS -> do 
+    C0BoolVal b <- lift $ evalE fs cond 
+    evalS fs $ if b then ifBodyS else fromMaybe (StatementBlock []) elseBodyS 
+
   Assert e -> do 
     C0BoolVal b <- lift $ evalE fs e 
     when (not b) (error $ "Assertion failed: " ++ show e)
