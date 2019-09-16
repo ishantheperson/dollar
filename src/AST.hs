@@ -21,6 +21,10 @@ data Function = Function { functionType :: C0Type,
                            functionContracts :: [Contract],
                            functionBody :: FunctionBody } deriving Show 
 
+showFunctionHeader :: Function -> String 
+showFunctionHeader f = 
+  show (functionType f) ++ " " ++ functionName f ++ "(" ++ intercalate ", " (map (\(VariableDecl n t) -> show t ++ " " ++ n) (functionArgDecls f)) ++ ")"
+
 data Expression = -- Terms
                   IntConstant Integer 
                 | StringLiteral String 
@@ -77,8 +81,20 @@ data C0Type = C0Int -- prefixed with C0 to avoid name collisions with Haskell ty
             | C0Typedef String C0Type
             | C0Pointer C0Type
             | C0Struct String 
-            | C0Array C0Type deriving (Show, Eq) 
+            | C0Array C0Type deriving (Eq) 
             -- also need function ptr types
+
+instance Show C0Type where 
+  show = \case 
+    C0Int -> "int"
+    C0Char -> "char"
+    C0String -> "string"
+    C0Bool -> "bool"
+    C0Void -> "void"
+    C0Typedef s _ -> s 
+    C0Pointer t -> show t ++ "*"
+    C0Struct s -> "struct " ++ s 
+    C0Array t -> show t ++ "[]"
 
 data Statement = VariableDeclStmnt VariableDecl
                | DeclAssign VariableDecl Expression
@@ -113,7 +129,7 @@ data C0Value = C0StringVal String
 showC0Value :: C0Value -> IO String
 showC0Value = \case 
   C0StringVal s -> return s 
-  C0CharVal c -> return [c]
+  C0CharVal c -> return $ show c
   C0IntVal i -> return $ show i -- TODO: number formats via Reader monad 
   C0BoolVal True -> return "true"
   C0BoolVal False -> return "false"
@@ -131,7 +147,7 @@ c0DefaultValue = \case
   C0Char -> C0CharVal '\0'
   C0Typedef _ t -> c0DefaultValue t 
   C0Pointer t -> C0PointerVal t Nothing 
-  C0Array t -> C0ArrayVal t undefined -- FIXME: maybe change it to Maybe (...)
+  C0Array t -> C0ArrayVal t undefined -- FIXME: maybe change it to Maybe (...)  
 
 instance Show (IORef a) where 
   show = const "<io ref>"

@@ -69,11 +69,15 @@ settings fs = setComplete completer (defaultSettings { historyFile = Just ".doll
 
         findCompletion :: [Function] -> String -> Evaluator [Completion] 
         findCompletion fs s = do 
-          vars <- gets getAllVars
-          let funcNames = map functionName fs 
-              varNames = map varName vars 
-        
-              names = funcNames ++ varNames ++ reservedWords
-          return $ mapMaybe (\v -> if s `isPrefixOf` v  
-                                     then Just $ simpleCompletion v
-                                     else Nothing) names 
+          vars <- gets getAllVars 
+          let funcCompletions = flip mapMaybe fs $ 
+                                  \f -> if s `isPrefixOf` functionName f 
+                                          then Just $ Completion (functionName f ++ "(") (showFunctionHeader f) False
+                                          else Nothing 
+
+              otherCompletions = flip mapMaybe ((map varName vars)) $
+                                   \w -> if s `isPrefixOf` w 
+                                           then Just $ simpleCompletion w 
+                                           else Nothing
+          return $ funcCompletions ++ otherCompletions
+                
