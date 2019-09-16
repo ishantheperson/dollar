@@ -28,6 +28,13 @@ parse p fileName input initialState =
     (Left err, _) -> Left $ errorBundlePretty err 
     (Right result, state) -> Right (result, state)
 
+--parseState :: Monad m => Parser a -> FilePath -> String -> StateT C0ParserState m (Either String a)
+parseState p fileName input = do  
+  result <- runParserT (sc >> (p <* eof)) fileName input 
+  case result of 
+    Left err -> return . Left $ errorBundlePretty err 
+    Right result -> return $ Right result 
+
 -- | Skips leading whitespace, then calls parser p on input until EOF
 --   Crashes and prints the error when it encounters one, otherwise 
 --   returns the parsed value 

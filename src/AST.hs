@@ -83,8 +83,8 @@ data C0Type = C0Int -- prefixed with C0 to avoid name collisions with Haskell ty
 data Statement = VariableDeclStmnt VariableDecl
                | DeclAssign VariableDecl Expression
                | Assign Expression Expression
-               | Increment Expression
-               | Decrement Expression
+               -- | Increment Expression
+               -- | Decrement Expression
                | IfStatement Expression Statement (Maybe Statement)
                -- Contracts need to be added to loops here
                | WhileLoop Expression [Contract] Statement

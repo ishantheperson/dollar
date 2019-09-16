@@ -73,6 +73,22 @@ evalS fs = \case
 
   Return Nothing -> throwE C0VoidVal 
   Return (Just value) -> (lift $ evalE fs value) >>= throwE 
+  ForLoop initStatement guardExpression iterationStatement contracts body -> do 
+    evalS fs initStatement
+    let loop = do 
+          -- TODO: run contracts here
+          C0BoolVal cond <- lift $ evalE fs guardExpression
+          when cond $ do 
+            evalS fs body 
+            case iterationStatement of 
+              Just s -> evalS fs s 
+              Nothing -> return () 
+            loop 
+  
+    loop 
+
+  FunctionCallStmnt e -> () <$ (lift $ evalE fs e)
+  other -> error $ "unsupported " ++ show other 
 
 evalE :: [Function] -> Expression -> Evaluator C0Value
 evalE fs = \case 

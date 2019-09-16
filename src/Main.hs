@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, ScopedTypeVariables #-}
 module Main where 
 
 import Parser
@@ -12,6 +12,10 @@ import Repl
 import Data.Function ((&))
 import Text.Megaparsec (many)
 
+import Control.Monad
+import Control.Monad.Trans.State.Strict
+import Control.Arrow ((&&&))
+
 import System.Console.GetOpt
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
@@ -23,16 +27,16 @@ options = [ Option ['x'] ["hex"] (NoArg $ ShowIntBase 16) "prints out integers i
 
 main :: IO ()
 main = do 
-  putStr "\x1b[32;1m"
+  putStr "\x1b[32;1m" -- green bold
   putStrLn "Welcome to Dollar, version -1"
-  putStr "\x1b[0m"
+  putStr "\x1b[0m" -- reset 
 
   putStrLn "For help, type #help"
 
   --getArgs >>= getOpt Permute options & \case 
   getArgs >>= \case 
     [] -> () <$ repl builtinFunctions defaultState
-      
+    
     file:_ -> do 
       fileContents <- readFile file 
       (decls, state) <- case parseDecls file fileContents defaultState of 
@@ -45,8 +49,9 @@ main = do
       --print =<< snd <$> repl (builtinFunctions ++ (map (\(FunctionDecl f) -> f) fs)) state 
       repl (builtinFunctions ++ (map (\(FunctionDecl f) -> f) fs)) state 
       return () 
-    
   where parseDecls = parse (many generalDecl) 
+
+--parseC0File :: FilePath -> StateT C0ParserState IO 
 
 {-
   files -> do 

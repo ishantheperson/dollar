@@ -16,6 +16,7 @@ import Data.Maybe (mapMaybe)
 
 import Control.Monad.State
 import Control.Monad.Trans.Except
+import Control.Exception
 
 import System.Console.Haskeline
 
@@ -45,21 +46,24 @@ loop fs state = do
 
     Just input -> do 
       let parseResult = parse replParser "(input)" input state 
-      case parseResult :: Either String (Either Expression Statement, C0ParserState)of 
+      case parseResult :: Either String (Either Expression Statement, C0ParserState) of 
         Left err -> outputStrLn err >> loop fs state 
         Right (result', state') -> do 
-          (result, state') <- lift $ case result' of 
-            Left e -> (,state') <$> evalE fs e
-            Right stmnt -> (,state') <$> (C0VoidVal <$ (runExceptT $ evalS fs stmnt))
+          (result, state') <- (lift $ case result' of 
+            Left e -> ((,state') <$> evalE fs e) -- `catches` evalExceptionHandlers
+            Right stmnt -> ((,state') <$> (C0VoidVal <$ (runExceptT $ evalS fs stmnt)))) -- `catches` evalExceptionHandlers
 
           outputStrLn =<< liftIO (showC0Value result)
           loop fs state' 
+
+evalExceptionHandlers :: [Control.Exception.Handler a]
+evalExceptionHandlers = [] 
 
 -- Eventually we will change this to another StateT monad,
 -- this one keeping track of functions. Then we can also
 -- get TAB completion for new functions instead of just for
 -- variables, prexisting functions, and language builtins like we do now
-settings :: [Function] -> Settings (Evaluator)
+settings :: [Function] -> Settings Evaluator
 settings fs = setComplete completer (defaultSettings { historyFile = Just ".dollarHistory" })
   where completer = completeWord Nothing " \t" (findCompletion fs)
 

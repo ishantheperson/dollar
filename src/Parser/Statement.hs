@@ -62,7 +62,7 @@ errorStatement = Error <$> (reserved "error" *> expression)
 
 statementBlock = StatementBlock <$> (braces $ many statement)
 
-simple = assign <|> inc <|> dec -- <|> (FunctionCallStmnt <$> expression)
+simple = inc <|> dec <|> assign  -- <|> (FunctionCallStmnt <$> expression)
   where assign = try $ do 
           (lhs, op) <- try $ do
                          lhs <- (try (Left <$> variableDecl)) <|> (try (Right <$> expression)); 
@@ -77,15 +77,18 @@ simple = assign <|> inc <|> dec -- <|> (FunctionCallStmnt <$> expression)
                 Nothing -> DeclAssign d rhs 
                 Just compoundOp -> DeclAssign d (BinOp (ArithOp compoundOp) (Identifier $ varName d) rhs)
 
-            (Right _, Nothing) -> fail "" -- This case is handled by inc/dec, but we could change it 
+            (Right e, Nothing) -> return $ FunctionCallStmnt e -- fail "" -- This case is handled by inc/dec, but we could change it 
             (Right lhs, Just op') -> do 
               rhs <- expression
               return $ case op' of 
                 Nothing -> Assign lhs rhs 
                 Just compoundOp -> Assign lhs (BinOp (ArithOp compoundOp) lhs rhs)
 
-        inc = try $ Increment <$> expression <* symbol "++"
-        dec = try $ Decrement <$> expression <* symbol "--"
+        --inc = try $ Increment <$> expression <* symbol "++"
+        inc = do e <- try (expression <* symbol "++")
+                 return $ Assign e (BinOp (ArithOp Plus) e (IntConstant 1))
+        dec = do e <- try (expression <* symbol "--")
+                 return $ Assign e (BinOp (ArithOp Minus) e (IntConstant 1))
 
         mkOp text constructor = symbol text $> Just constructor
         opParsers = [symbol "=" $> Nothing,
