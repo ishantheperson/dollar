@@ -13,7 +13,16 @@ import Text.Megaparsec hiding (parse)
 import Text.Megaparsec.Debug
 
 data Decl = Typedef String C0Type 
+          | StructDecl String C0Struct
           | FunctionDecl Function deriving Show
+
+struct = do 
+  reserved "struct"
+  name <- identifier 
+  braces . some $ do 
+    VariableDecl fieldName fieldType <- variableDecl 
+    semicolon 
+    return (fieldName, fieldType)
 
 isParsedFunctionDecl = \case 
   FunctionDecl _ -> True 

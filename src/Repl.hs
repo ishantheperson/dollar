@@ -9,23 +9,57 @@ import Eval.Context
 import Parser
 import Parser.C0ParserState
 
-import Data.List (isPrefixOf)
+import Data.Int
+import Data.Char 
+import Numeric 
+import Data.Array.MArray
+import Data.List (isPrefixOf, intercalate, find)
 import Data.Maybe (mapMaybe)
 
 import Control.Monad.State
 import Control.Monad.Trans.Except
+import Control.Monad.Trans.Reader
 import Control.Exception
 
 import System.Console.Haskeline hiding (Handler)
 
-repl :: [Function] -> C0ParserState -> IO ((), Context)
-repl fs state = runEvalT $ runInputT (settings fs) (loop fs state)
+type ReplT = ReaderT ReplFlags Evaluator
+
+data ReplFlags = ReplFlags {
+  replIntBase :: Int
+} deriving Show 
+
+-- Because 
+showC0Value :: ReplFlags -> C0Value -> IO String
+showC0Value flags = \case 
+  --C0IntVal i -> return $ show i -- TODO: number formats via Reader monad 
+  C0IntVal i -> 
+    let base = replIntBase flags 
+        num = if i < 0 then i + (maxBound :: Int32) else i 
+    in return $ case base of 
+         10 -> show i 
+         16 -> "0x" ++ showHex num ""
+         _ -> showIntAtBase base intToDigit (fromIntegral num) "" 
+
+  C0StringVal s -> return $ show s 
+  C0CharVal c -> return $ show c
+  C0BoolVal True -> return "true"
+  C0BoolVal False -> return "false"
+  C0VoidVal -> return "(void)"
+  C0PointerVal _ Nothing -> return "NULL"
+  C0ArrayVal _ a -> do arrayElems <- getElems a
+                       strings <- mapM (showC0Value flags) arrayElems
+                       return $ "{" ++ intercalate ", " strings ++ "}"
+
+
+repl :: [Function] -> C0ParserState -> ReplFlags -> IO ((), Context)
+repl fs state flags = runEvalT $ flip runReaderT flags $ runInputT (settings fs) (loop fs state)
 
 prompt = "\x1b[32;1m$> \x1b[0m"
 
 -- Evaluator is the state of the "main" function that's always running
 -- in the interpreter 
-loop :: [Function] -> C0ParserState -> InputT Evaluator ()
+loop :: [Function] -> C0ParserState -> InputT ReplT ()
 loop fs state = do 
   getInputLine prompt >>= \case
     Nothing -> do
@@ -34,7 +68,7 @@ loop fs state = do
     Just "#quit" -> do 
       outputStrLn "Goodbye"
       return ()
-      
+
     Just "#help" -> do 
       outputStrLn "Use #functions to get a list of all functions"
       outputStrLn "Press TAB to complete code in most cases"
@@ -50,14 +84,15 @@ loop fs state = do
     Just input -> do 
       --let parseResult = parse replParser "(input)" input state 
       let parseResult = replParser input state 
+      -- Yikes this got messy sorry 
       case parseResult :: Either String (Either Expression Statement, C0ParserState) of 
         Left err -> outputStrLn err >> loop fs state 
         Right (result', state') -> do 
-          (result, state') <- (lift $ case result' of 
+          (result, state') <- (lift . lift $ case result' of 
             Left e -> ((,state') <$> evalE fs e) -- `catches` evalExceptionHandlers
             Right stmnt -> ((,state') <$> (C0VoidVal <$ (runExceptT $ evalS fs stmnt)))) -- `catches` evalExceptionHandlers
 
-          outputStrLn =<< liftIO (showC0Value result)
+          outputStrLn =<< liftIO . flip showC0Value result =<< lift ask
           loop fs state' 
 
 evalExceptionHandlers :: [Handler a]
@@ -67,13 +102,13 @@ evalExceptionHandlers = []
 -- this one keeping track of functions. Then we can also
 -- get TAB completion for new functions instead of just for
 -- variables, prexisting functions, and language builtins like we do now
-settings :: [Function] -> Settings Evaluator
+settings :: [Function] -> Settings ReplT
 settings fs = setComplete completer (defaultSettings { historyFile = Just ".dollarHistory" })
   where completer = completeWord Nothing " \t" (findCompletion fs)
 
         completedReservedWords = ["alloc", "alloc_array"]
 
-        findCompletion :: [Function] -> String -> Evaluator [Completion] 
+        findCompletion :: [Function] -> String -> ReplT [Completion] 
         findCompletion fs s = do 
           vars <- gets getAllVars 
           let funcCompletions = flip mapMaybe fs $ 

@@ -11,6 +11,7 @@ import Text.Megaparsec.Debug
 import Control.Monad.Trans
 import Control.Monad.Trans.State.Strict
 
+variableDecl :: Parser VariableDecl
 variableDecl = do 
   varType <- parseType
   varName <- identifier

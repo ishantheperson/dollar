@@ -17,8 +17,8 @@ statement = statementBlock <|>
             whileLoop <|>
             forLoop <|>
             returnStatement <* semicolon <|>
-            assertStatement <* semicolon <|>
-            errorStatement <* semicolon <|>
+            --assertStatement <* semicolon <|>
+            --errorStatement <* semicolon <|>
             (StatementContract <$> nonemptyContractBlock) <|>
             simple <* semicolon
 
@@ -57,8 +57,8 @@ forLoop = do
   return $ ForLoop init test inc contracts body 
 
 returnStatement = Return <$> (reserved "return" *> optional expression)
-assertStatement = Assert <$> (reserved "assert" *> expression)
-errorStatement = Error <$> (reserved "error" *> expression)
+--assertStatement = Assert <$> (reserved "assert" *> expression)
+--errorStatement = Error <$> (reserved "error" *> expression)
 
 statementBlock = StatementBlock <$> (braces $ many statement)
 

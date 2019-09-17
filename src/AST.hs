@@ -99,15 +99,15 @@ instance Show C0Type where
 data Statement = VariableDeclStmnt VariableDecl
                | DeclAssign VariableDecl Expression
                | Assign Expression Expression
-               -- | Increment Expression
+               -- | Increment Expression  -- desugared in the parsing stage 
                -- | Decrement Expression
                | IfStatement Expression Statement (Maybe Statement)
                -- Contracts need to be added to loops here
                | WhileLoop Expression [Contract] Statement
                | ForLoop Statement Expression (Maybe Statement) [Contract] Statement 
                | Return (Maybe Expression)
-               | Assert Expression
-               | Error Expression
+               -- | Assert Expression -- now are builtin functions 
+               -- | Error Expression
                | FunctionCallStmnt Expression
                | StatementContract [Contract]
                | StatementBlock [Statement] deriving Show -- technically "3;" is valid here too 
@@ -115,6 +115,7 @@ data Statement = VariableDeclStmnt VariableDecl
 data ContractType = AssertContract | LoopInvariant | Requires | Ensures deriving (Show, Eq)
 data Contract = Contract { getContractType :: ContractType, getContractBody :: Expression } deriving Show
 
+type C0Struct = [(String, C0Type)]
 data C0Value = C0StringVal String 
              | C0CharVal Char 
              | C0IntVal Int32 
@@ -123,21 +124,9 @@ data C0Value = C0StringVal String
 
              | C0PointerVal C0Type (Maybe (IORef C0Value)) -- ^ Nothing indicates NULL
              | C0ArrayVal C0Type (IOArray Int32 C0Value) -- ^ C0 arrays cannot be NULL
+             | C0StructVal [(String, C0Value)] 
                  deriving (Show, Eq)
 
--- Because 
-showC0Value :: C0Value -> IO String
-showC0Value = \case 
-  C0StringVal s -> return $ show s 
-  C0CharVal c -> return $ show c
-  C0IntVal i -> return $ show i -- TODO: number formats via Reader monad 
-  C0BoolVal True -> return "true"
-  C0BoolVal False -> return "false"
-  C0VoidVal -> return "(void)"
-  C0PointerVal _ Nothing -> return "NULL"
-  C0ArrayVal _ a -> do arrayElems <- getElems a
-                       strings <- mapM showC0Value arrayElems
-                       return $ "{" ++ intercalate ", " strings ++ "}"
 
 c0DefaultValue :: C0Type -> C0Value
 c0DefaultValue = \case 

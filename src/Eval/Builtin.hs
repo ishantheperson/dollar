@@ -34,9 +34,10 @@ println = Function {
 }
 
 println' :: [C0Value] -> IO C0Value
-println' vals = do 
-  mapM_ (putStrLn <=< showC0Value) vals 
-  return C0VoidVal
+println' [C0StringVal s] = do 
+  C0VoidVal <$ putStrLn s 
+  --mapM_ (putStrLn <=< showC0Value) vals 
+  --return C0VoidVal
 
 c0Assert = Function {
   functionType = C0Void,
@@ -59,9 +60,9 @@ c0Error = Function {
 }
 
 c0Error' [C0StringVal b] = do 
-  putStr "\x1b[31;1m"
+  putStr "\x1b[31;1m" -- bold red 
   putStr "ERROR: "
   putStr "\x1b[0m"
-  
+
   putStrLn b 
   exitFailure

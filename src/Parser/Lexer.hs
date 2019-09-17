@@ -64,9 +64,9 @@ reservedWords = [ "if",
                   "typedef",
                   "struct",
                   "alloc",
-                  "alloc_array",
+                  "alloc_array"
 
-                  "assert"
+                  --"assert"
                 ]
 
 -- | Space consumer 
@@ -79,7 +79,7 @@ scRegular = Lex.space space1 lineComment blockComment
 -- In contracts, @ is a space char (not specified in the language spec tho I think)
 -- In line contracts, don't allow newlines 
 scLineContract = Lex.space (skipSome (oneOf "@ \t")) lineComment blockComment
-scBlockContract = Lex.space (skipSome (void spaceChar <|> (try (char '@' >> notFollowedBy (string "*"))))) lineComment blockComment
+scBlockContract = Lex.space (skipSome (void spaceChar <|> try (char '@' >> notFollowedBy (string "*")))) lineComment blockComment
 
 lineComment = do 
   try $ string "//" >> notFollowedBy (char '@')

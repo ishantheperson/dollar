@@ -5,6 +5,7 @@ import AST
 import Eval.Context 
 import Eval.Builtin
 
+import Data.List (find)
 import Data.Maybe (fromMaybe)
 import Data.Bits 
 import Data.Int 
@@ -23,7 +24,6 @@ import Control.Monad.Trans.State.Strict
 type Evaluator = StateT Context IO
 runEvalT = flip runStateT emptyContext 
 
-
 --evalFunction :: Function -> [C0Value] -> IO () 
 evalFunction f fs args = 
   let initialContext = fromMap . Map.fromList $ zip (map varName (functionArgDecls f)) args 
@@ -40,7 +40,7 @@ evalFunction f fs args =
           let (C0FunctionBody interpertedFunctionBody) = functionBody f 
           unwrappedRetVal <- case functionBody f of 
                                NativeFunctionBody fb -> Left <$> liftIO (fb args)
-                               C0FunctionBody fb -> runExceptT (traverse (evalS fs) (interpertedFunctionBody))
+                               C0FunctionBody fb -> runExceptT (traverse (evalS fs) interpertedFunctionBody)
           let retVal = case unwrappedRetVal of 
                 Left e -> e 
                 Right _ -> C0VoidVal 
@@ -191,8 +191,24 @@ evalE fs = \case
 
     return . C0BoolVal $ (getBoolOp op) a b 
 
+  UnaryOp Negate operand -> do 
+    C0IntVal a <- evalE fs operand 
+    return . C0IntVal $ negate a 
+  
+  UnaryOp BitNot operand -> do 
+    C0IntVal a <- evalE fs operand 
+    return . C0IntVal $ complement a 
+
+  UnaryOp BoolNot operand -> do 
+    C0BoolVal b <- evalE fs operand 
+    return . C0BoolVal $ not b 
+
   x -> error $ "not yet implemented: " ++ show x 
-  where findFunction name = head . filter ((==) name . functionName)
+  --where findFunction name = head . filter ((==) name . functionName)
+  where findFunction name fs = 
+          case find ((==) name . functionName) fs of 
+            Just f -> f 
+            Nothing -> error $ "Unknown function '" ++ name ++ "'"
 
 getArithOp :: ArithOperator -> (Int32 -> Int32 -> Int32)
 getArithOp = \case 
