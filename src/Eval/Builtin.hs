@@ -7,7 +7,7 @@ import Control.Monad
 
 import System.Exit (exitFailure)
 
-builtinFunctions = [stringToCharArray, println, c0Assert, c0Error]
+builtinFunctions = [stringToCharArray, c0print, println, c0Assert, c0Error]
 
 stringToCharArray :: Function
 stringToCharArray = Function {
@@ -38,6 +38,16 @@ println' [C0StringVal s] = do
   C0VoidVal <$ putStrLn s 
   --mapM_ (putStrLn <=< showC0Value) vals 
   --return C0VoidVal
+
+c0print = Function {
+  functionType = C0Void,
+  functionName = "print",
+  functionArgDecls = [VariableDecl "s" C0String],
+  functionBody = NativeFunctionBody c0print',
+  functionContracts = []
+}
+
+c0print' [C0StringVal s] = C0VoidVal <$ putStr s 
 
 c0Assert = Function {
   functionType = C0Void,

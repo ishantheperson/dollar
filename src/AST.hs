@@ -7,6 +7,8 @@ import Data.IORef
 import Data.Array.IO 
 import Data.Array.MArray 
 
+import qualified Data.Map.Strict as Map 
+
 data VariableDecl = VariableDecl { varName :: String, varType :: C0Type } deriving Show 
 
 data FunctionBody = C0FunctionBody [Statement] | NativeFunctionBody ([C0Value] -> IO C0Value)
@@ -72,30 +74,6 @@ data UnaryOperator =
   | PointerDeref
   deriving Show
 
-type Typedef = (String, C0Type)
-data C0Type = C0Int -- prefixed with C0 to avoid name collisions with Haskell types...
-            | C0Char
-            | C0String
-            | C0Bool
-            | C0Void
-            | C0Typedef String C0Type
-            | C0Pointer C0Type
-            | C0Struct String 
-            | C0Array C0Type deriving (Eq) 
-            -- also need function ptr types
-
-instance Show C0Type where 
-  show = \case 
-    C0Int -> "int"
-    C0Char -> "char"
-    C0String -> "string"
-    C0Bool -> "bool"
-    C0Void -> "void"
-    C0Typedef s _ -> s 
-    C0Pointer t -> show t ++ "*"
-    C0Struct s -> "struct " ++ s 
-    C0Array t -> show t ++ "[]"
-
 data Statement = VariableDeclStmnt VariableDecl
                | DeclAssign VariableDecl Expression
                | Assign Expression Expression
@@ -115,6 +93,30 @@ data Statement = VariableDeclStmnt VariableDecl
 data ContractType = AssertContract | LoopInvariant | Requires | Ensures deriving (Show, Eq)
 data Contract = Contract { getContractType :: ContractType, getContractBody :: Expression } deriving Show
 
+type Typedef = (String, C0Type)
+data C0Type = C0Int -- prefixed with C0 to avoid name collisions with Haskell types...
+            | C0Char
+            | C0String
+            | C0Bool
+            | C0Void
+            | C0Typedef String C0Type
+            | C0Pointer C0Type
+            | C0Struct String [(String, C0Type)] -- could use a map instead
+            | C0Array C0Type deriving (Eq) 
+            -- also need function ptr types
+
+instance Show C0Type where 
+  show = \case 
+    C0Int -> "int"
+    C0Char -> "char"
+    C0String -> "string"
+    C0Bool -> "bool"
+    C0Void -> "void"
+    C0Typedef s _ -> s 
+    C0Pointer t -> show t ++ "*"
+    C0Struct s _ -> "struct " ++ s 
+    C0Array t -> show t ++ "[]"
+
 type C0Struct = [(String, C0Type)]
 data C0Value = C0StringVal String 
              | C0CharVal Char 
@@ -124,7 +126,7 @@ data C0Value = C0StringVal String
 
              | C0PointerVal C0Type (Maybe (IORef C0Value)) -- ^ Nothing indicates NULL
              | C0ArrayVal C0Type (IOArray Int32 C0Value) -- ^ C0 arrays cannot be NULL
-             | C0StructVal [(String, C0Value)]
+             | C0StructVal (Map.Map String C0Value) -- [(String, C0Value)]
                  deriving (Show, Eq)
 
 
@@ -136,7 +138,8 @@ c0DefaultValue = \case
   C0Char -> C0CharVal '\0'
   C0Typedef _ t -> c0DefaultValue t 
   C0Pointer t -> C0PointerVal t Nothing 
-  C0Array t -> C0ArrayVal t undefined -- FIXME: maybe change it to Maybe (...)  
+  C0Array t -> C0ArrayVal t undefined -- FIXME: maybe change it to Maybe (...) 
+  C0Struct _ fields -> C0StructVal . Map.fromList $ map (\(name, fieldType) -> (name, c0DefaultValue fieldType)) fields  
 
 instance Show (IORef a) where 
   show = const "<io ref>"

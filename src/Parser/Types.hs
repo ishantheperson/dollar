@@ -58,11 +58,19 @@ parseType = simple >>= postfix
             Just t -> return $ C0Typedef s t 
             Nothing -> fail $ "unknown typedef name '" ++ s ++ "'" 
 
+        structT :: Parser C0Type 
+        structT = do 
+          reserved "struct"
+          name <- identifier 
+          maybeT <- lift $ gets (lookupStruct name)
+          case maybeT of 
+            Just body -> return $ C0Struct name body 
+            Nothing -> fail $ "unknown struct name '" ++ name ++ "'" 
+
         simple = 
           C0Int <$ reserved "int" <|>
           C0Char <$ reserved "char" <|>
           C0String <$ reserved "string" <|>
           C0Void <$ reserved "void" <|>
           C0Bool <$ reserved "bool" <|>
-          (C0Struct <$ reserved "struct" <*> identifier) <|>
-          typedefT  
+          structT <|>typedefT  -- These ones check to make sure their types are valid

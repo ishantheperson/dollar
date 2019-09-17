@@ -64,6 +64,7 @@ main = do
                                                  exitFailure
                                   Right v -> return v 
           
+              print state 
               let fs = filter isParsedFunctionDecl decls 
           
               --print =<< snd <$> repl (builtinFunctions ++ (map (\(FunctionDecl f) -> f) fs)) state 

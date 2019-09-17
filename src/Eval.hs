@@ -81,6 +81,20 @@ evalS fs = \case
 
     liftIO $ writeArray array i val 
 
+
+  Assign (StructDotAccess (UnaryOp PointerDeref p) fieldName) rhs -> do 
+    C0PointerVal _ ref <- lift $ evalE fs p 
+    val <- lift $ evalE fs rhs 
+
+    case ref of 
+      Nothing -> error "null sdasd"
+      Just ref' -> do 
+        C0StructVal oldStruct <- liftIO $ readIORef ref' 
+        liftIO $ writeIORef ref' (C0StructVal $ Map.insert fieldName val oldStruct)
+    --C0StructVal fields <- evalE fs s 
+    --val <- lift $ evalE fs rhs 
+    --return . C0StructVal $ Map.insert fieldName rhs fields 
+
   Assign (UnaryOp PointerDeref p) rhs -> do 
     C0PointerVal _ ref <- lift $ evalE fs p 
     val <- lift $ evalE fs rhs 

@@ -1,8 +1,8 @@
 module Parser.Contract where 
 
+import AST 
 import Parser.Lexer
 import Parser.Expression 
-import AST 
 import Parser.C0ParserState
 
 import Control.Monad.State

@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections, NPlusKPatterns #-}
+{-# LANGUAGE LambdaCase, TupleSections, NPlusKPatterns, ScopedTypeVariables #-}
 module Repl where 
 
 import AST
@@ -13,7 +13,8 @@ import Data.Int
 import Data.Char 
 import Numeric 
 import Data.Array.MArray
-import Data.List (isPrefixOf, intercalate, find)
+import qualified Data.Map as Map
+import Data.List (isPrefixOf, intercalate)
 import Data.Maybe (mapMaybe)
 
 import Control.Monad.State
@@ -26,7 +27,7 @@ import System.Console.Haskeline hiding (Handler)
 type ReplT = ReaderT ReplFlags Evaluator
 
 data ReplFlags = ReplFlags {
-replIntBase :: Int
+  replIntBase :: Int
 } deriving Show 
 
 -- Because 
@@ -49,6 +50,13 @@ showC0Value flags = \case
   C0VoidVal -> return "(void)"
   C0PointerVal _ Nothing -> return "NULL"
   C0PointerVal t _ -> return $ "<" ++ show t ++ "*>"
+  C0StructVal s -> do 
+    fieldStrings :: [String] <- forM (Map.toList s) $ \(fieldName, fieldVal) -> do
+      shownVal <- showC0Value flags fieldVal 
+      return $ fieldName ++ "=" ++ shownVal
+
+    return $  "{" ++ intercalate ", " fieldStrings ++ "}"
+
   C0ArrayVal _ a -> do arrayElems <- getElems a
                        strings <- mapM (showC0Value flags) arrayElems
                        return $ "{" ++ intercalate ", " strings ++ "}"
