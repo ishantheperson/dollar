@@ -9,6 +9,7 @@ import Data.List (find)
 import Data.Maybe (fromMaybe)
 import Data.Bits 
 import Data.Int 
+import Data.IORef
 import Data.Array.IO
 import qualified Data.Map.Strict as Map 
 
@@ -80,6 +81,14 @@ evalS fs = \case
 
     liftIO $ writeArray array i val 
 
+  Assign (UnaryOp PointerDeref p) rhs -> do 
+    C0PointerVal _ ref <- lift $ evalE fs p 
+    val <- lift $ evalE fs rhs 
+
+    case ref of 
+      Nothing -> error "Assign to NULL pointer"
+      Just ref' -> liftIO $ writeIORef ref' val
+
   Return Nothing -> throwE C0VoidVal 
   Return (Just value) -> (lift $ evalE fs value) >>= throwE 
   ForLoop initStatement guardExpression iterationStatement contracts body -> do 
@@ -140,6 +149,13 @@ evalE fs = \case
   Ternary e t f -> do 
     C0BoolVal b <- evalE fs e 
     evalE fs $ if b then t else f  
+
+  Alloc t -> liftIO $ C0PointerVal t . Just <$> newIORef (c0DefaultValue t)
+  UnaryOp PointerDeref p -> do 
+    C0PointerVal t ref <- evalE fs p 
+    case ref of 
+      Nothing -> error "NULL dereferenced"
+      Just ref' -> liftIO $ readIORef ref' 
 
   AllocArray t numExp -> do 
     C0IntVal n <- evalE fs numExp

@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TupleSections #-}
+{-# LANGUAGE LambdaCase, TupleSections, NPlusKPatterns #-}
 module Repl where 
 
 import AST
@@ -26,7 +26,7 @@ import System.Console.Haskeline hiding (Handler)
 type ReplT = ReaderT ReplFlags Evaluator
 
 data ReplFlags = ReplFlags {
-  replIntBase :: Int
+replIntBase :: Int
 } deriving Show 
 
 -- Because 
@@ -38,7 +38,8 @@ showC0Value flags = \case
         num = if i < 0 then i + (maxBound :: Int32) else i 
     in return $ case base of 
          10 -> show i 
-         16 -> "0x" ++ showHex num ""
+         16 -> "0x" ++ zeroPad 8 (showHex num "")
+         2 -> "0b" ++ zeroPad 32 (showIntAtBase 2 intToDigit num "")
          _ -> showIntAtBase base intToDigit (fromIntegral num) "" 
 
   C0StringVal s -> return $ show s 
@@ -47,9 +48,16 @@ showC0Value flags = \case
   C0BoolVal False -> return "false"
   C0VoidVal -> return "(void)"
   C0PointerVal _ Nothing -> return "NULL"
+  C0PointerVal t _ -> return $ "<" ++ show t ++ "*>"
   C0ArrayVal _ a -> do arrayElems <- getElems a
                        strings <- mapM (showC0Value flags) arrayElems
                        return $ "{" ++ intercalate ", " strings ++ "}"
+  where -- zeroPad :: IString -> String 
+        zeroPad len s = let difference = len - length s
+                        in go s difference
+          where go s = \case 
+                  0 -> s 
+                  n + 1 -> '0':go s n  
 
 
 repl :: [Function] -> C0ParserState -> ReplFlags -> IO ((), Context)
@@ -81,6 +89,7 @@ loop fs state = do
         else forM_ fs (outputStrLn . showFunctionHeader)
       loop fs state 
 
+    Just "" -> loop fs state 
     Just input -> do 
       --let parseResult = parse replParser "(input)" input state 
       let parseResult = replParser input state 

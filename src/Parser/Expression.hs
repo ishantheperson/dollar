@@ -28,7 +28,7 @@ expression = makeExprParser (term >>= postfix) operators <?> "expression"
 
         arrowAccess e = do symbol "->"
                            fieldName <- identifier 
-                           postfix $ StructArrowAccess e fieldName
+                           postfix $ StructDotAccess (UnaryOp PointerDeref e) fieldName
 
         arrayAccess e = do index <- squareBrackets expression 
                            postfix $ ArrayAccess e index                        

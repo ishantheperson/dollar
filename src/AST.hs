@@ -38,7 +38,7 @@ data Expression = -- Terms
                 | ArrayAccess Expression Expression
 
                 | StructDotAccess Expression String 
-                | StructArrowAccess Expression String 
+                -- | StructArrowAccess Expression String 
 
                 | Alloc C0Type
                 | AllocArray C0Type Expression  
@@ -124,7 +124,7 @@ data C0Value = C0StringVal String
 
              | C0PointerVal C0Type (Maybe (IORef C0Value)) -- ^ Nothing indicates NULL
              | C0ArrayVal C0Type (IOArray Int32 C0Value) -- ^ C0 arrays cannot be NULL
-             | C0StructVal [(String, C0Value)] 
+             | C0StructVal [(String, C0Value)]
                  deriving (Show, Eq)
 
 

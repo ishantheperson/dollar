@@ -77,7 +77,7 @@ simple = inc <|> dec <|> assign  -- <|> (FunctionCallStmnt <$> expression)
                 Nothing -> DeclAssign d rhs 
                 Just compoundOp -> DeclAssign d (BinOp (ArithOp compoundOp) (Identifier $ varName d) rhs)
 
-            (Right e, Nothing) -> return $ FunctionCallStmnt e -- fail "" -- This case is handled by inc/dec, but we could change it 
+            (Right e, Nothing) -> return $ FunctionCallStmnt e 
             (Right lhs, Just op') -> do 
               rhs <- expression
               return $ case op' of 

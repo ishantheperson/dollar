@@ -31,8 +31,8 @@ options = [ Option ['x'] ["hex"] (NoArg $ ShowIntBase 16) "prints out integers i
   where readBase :: String -> Int 
         readBase s = 
           let num = read s in 
-          if num <= 0 || num > 16 
-            then error "Base must be between 1 and 16"
+          if num < 2 || num > 16 
+            then error "Base must be between 2 and 16" -- FIXME: Validate options before launch REPL properly
             else num 
             
 findBase :: [Flag] -> Int 
