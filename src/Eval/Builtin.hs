@@ -1,13 +1,24 @@
-module Eval.Builtin where 
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+module Eval.Builtin (builtinFunctions, 
+  string, conio, util) where 
 
 import AST
 
+import Data.Int
 import Data.Array.MArray
 import Control.Monad
 
 import System.Exit (exitFailure)
 
-builtinFunctions = [stringToCharArray, c0print, println, c0Assert, c0Error]
+builtinFunctions = 
+  [c0Assert, c0Error] ++ -- Builtins
+  string ++
+  conio ++ 
+  util 
+
+string = [stringToCharArray]
+conio = [c0print, println, printInt]
+util = [c0abs, intMax, intMin]
 
 stringToCharArray :: Function
 stringToCharArray = Function {
@@ -49,6 +60,16 @@ c0print = Function {
 
 c0print' [C0StringVal s] = C0VoidVal <$ putStr s 
 
+printInt = Function {
+  functionType = C0Void,
+  functionName = "printint",
+  functionArgDecls = [VariableDecl "i" C0Int],
+  functionBody = NativeFunctionBody c0PrintInt',
+  functionContracts = []
+}
+
+c0PrintInt' [C0IntVal i] = C0VoidVal <$ putStr (show i)
+
 c0Assert = Function {
   functionType = C0Void,
   functionName = "assert",
@@ -76,3 +97,30 @@ c0Error' [C0StringVal b] = do
 
   putStrLn b 
   exitFailure
+
+c0abs = Function {
+  functionType = C0Int,
+  functionName = "abs",
+  functionArgDecls = [VariableDecl "i" C0Int],
+  functionContracts = [], -- todo 
+  --functionContracts = [Ensures ()],
+  functionBody = NativeFunctionBody $ \[C0IntVal i] -> return $ C0IntVal $ abs i 
+}
+
+intMax = Function {
+  functionType = C0Int,
+  functionName = "int_max",
+  functionArgDecls = [],
+  functionContracts = [], -- todo 
+  --functionContracts = [Ensures ()],
+  functionBody = NativeFunctionBody $ \[] -> return $ C0IntVal (maxBound :: Int32)
+}
+
+intMin = Function {
+  functionType= C0Int,
+  functionName = "int_min",
+  functionArgDecls = [],
+  functionContracts = [], -- todo 
+  --functionContracts = [Ensures ()],
+  functionBody = NativeFunctionBody $ \[] -> return $ C0IntVal (minBound :: Int32)
+}

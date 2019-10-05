@@ -6,7 +6,7 @@ import Eval.Context
 import Eval.Builtin
 
 import Data.List (find)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 import Data.Bits 
 import Data.Int 
 import Data.IORef
@@ -22,12 +22,16 @@ import Control.Monad.Trans
 import Control.Monad.Trans.Except 
 import Control.Monad.Trans.State.Strict
 
-type Evaluator = StateT Context IO
-runEvalT = flip runStateT emptyContext 
+type Evaluator = StateT EvalInfo IO
+runEvalT = flip runStateT emptyEvalInfo 
+
+dbg :: MonadIO m => String -> m ()
+--dbg = liftIO . putStrLn 
+dbg = const $ pure () 
 
 --evalFunction :: Function -> [C0Value] -> IO () 
 evalFunction f fs args = 
-  let initialContext = fromMap . Map.fromList $ zip (map varName (functionArgDecls f)) args 
+  let initialContext = (\x -> EvalInfo x [] []) $ fromMap . Map.fromList $ zip (map varName (functionArgDecls f)) args 
       requires = filter ((==) Requires . getContractType) (functionContracts f)
       ensures = filter ((==) Ensures . getContractType) (functionContracts f)
       
@@ -38,10 +42,9 @@ evalFunction f fs args =
           preconditionsMet <- c0BoolAnd <$> mapM (evalE fs . getContractBody) requires
           when (not preconditionsMet) (liftIO $ ioError (userError "Requires failed"))
 
-          let (C0FunctionBody interpertedFunctionBody) = functionBody f 
           unwrappedRetVal <- case functionBody f of 
                                NativeFunctionBody fb -> Left <$> liftIO (fb args)
-                               C0FunctionBody fb -> runExceptT (traverse (evalS fs) interpertedFunctionBody)
+                               C0FunctionBody fb -> runExceptT (traverse (evalS fs) fb)
           let retVal = case unwrappedRetVal of 
                 Left e -> e 
                 Right _ -> C0VoidVal 
@@ -67,12 +70,14 @@ evalS fs = \case
     () <$ traverse (evalS fs) stmnts
     lift $ modify popScope
 
+  StatementContract _ -> return () 
+
   VariableDeclStmnt v -> lift $ modify (insertVar (varName v) (c0DefaultValue $ varType v))
   DeclAssign (varName -> n) value -> lift (evalE fs value) >>= \c -> lift $ modify (insertVar n c) 
   -- We need special treatment of lvalues here
   Assign (Identifier name) rhs -> do 
     val <- lift $ evalE fs rhs 
-    lift $ modify (insertVar name val)
+    lift $ modify (updateVar name val)
 
   Assign (ArrayAccess arrayExp indexExp) rhs -> do 
     C0ArrayVal _ array <- lift $ evalE fs arrayExp 
@@ -80,7 +85,6 @@ evalS fs = \case
     val <- lift $ evalE fs rhs 
 
     liftIO $ writeArray array i val 
-
 
   Assign (StructDotAccess (UnaryOp PointerDeref p) fieldName) rhs -> do 
     C0PointerVal _ ref <- lift $ evalE fs p 
@@ -91,9 +95,14 @@ evalS fs = \case
       Just ref' -> do 
         C0StructVal oldStruct <- liftIO $ readIORef ref' 
         liftIO $ writeIORef ref' (C0StructVal $ Map.insert fieldName val oldStruct)
-    --C0StructVal fields <- evalE fs s 
-    --val <- lift $ evalE fs rhs 
-    --return . C0StructVal $ Map.insert fieldName rhs fields 
+
+  Assign (StructDotAccess (ArrayAccess arrayExp indexExp) fieldName) rhs -> do 
+    C0ArrayVal _ array <- lift $ evalE fs arrayExp 
+    C0IntVal i <- lift $ evalE fs indexExp
+    val <- lift $ evalE fs rhs 
+
+    C0StructVal oldStruct <- liftIO $ readArray array i 
+    liftIO $ writeArray array i (C0StructVal $ Map.insert fieldName val oldStruct)
 
   Assign (UnaryOp PointerDeref p) rhs -> do 
     C0PointerVal _ ref <- lift $ evalE fs p 
@@ -106,6 +115,7 @@ evalS fs = \case
   Return Nothing -> throwE C0VoidVal 
   Return (Just value) -> (lift $ evalE fs value) >>= throwE 
   ForLoop initStatement guardExpression iterationStatement contracts body -> do 
+    dbg "in for loop"
     lift $ modify pushScope
     evalS fs initStatement
     let loop = do 
@@ -122,6 +132,7 @@ evalS fs = \case
     lift $ modify popScope
 
   WhileLoop guardExpression contracts bodyS -> do 
+    dbg "in while loop"
     lift $ modify pushScope
     let loop = do
           -- Check contracts here
@@ -141,15 +152,6 @@ evalS fs = \case
     C0BoolVal b <- lift $ evalE fs cond 
     evalS fs $ if b then ifBodyS else fromMaybe (StatementBlock []) elseBodyS 
 
-{-
-  Assert e -> do 
-    C0BoolVal b <- lift $ evalE fs e 
-    when (not b) (error $ "Assertion failed: " ++ show e)
-
-  Error e -> do 
-    C0StringVal msg <- lift $ evalE fs e 
-    error msg 
--}
   other -> error $ "unsupported " ++ show other 
 
 evalE :: [Function] -> Expression -> Evaluator C0Value
@@ -159,6 +161,7 @@ evalE fs = \case
   CharLiteral c -> return $ C0CharVal c 
   BoolLiteral b -> return $ C0BoolVal b 
   Identifier v -> lookupVar v 
+  NullConst -> return $ C0PointerVal C0Void Nothing 
   ContractResult -> lookupVar "\\result"
   Ternary e t f -> do 
     C0BoolVal b <- evalE fs e 
@@ -170,6 +173,10 @@ evalE fs = \case
     case ref of 
       Nothing -> error "NULL dereferenced"
       Just ref' -> liftIO $ readIORef ref' 
+
+  StructDotAccess e f -> do 
+    C0StructVal m <- evalE fs e 
+    return $ fromJust $ Map.lookup f m 
 
   AllocArray t numExp -> do 
     C0IntVal n <- evalE fs numExp
@@ -186,6 +193,7 @@ evalE fs = \case
     C0IntVal . succ . snd <$> liftIO (getBounds array) 
 
   FunctionCall (Identifier fName) args -> do 
+    dbg ("calling func " ++ fName)
     let f = findFunction fName fs 
     argVals <- traverse (evalE fs) args 
     fst <$> (liftIO $ evalFunction f fs argVals)
@@ -245,8 +253,8 @@ getArithOp = \case
   Plus -> (+)
   Minus -> (-)
   Multiply -> (*)
-  Divide -> div 
-  Mod -> mod 
+  Divide -> quot 
+  Mod -> rem
 
   BitAnd -> (.&.)
   BitOr -> (.|.)

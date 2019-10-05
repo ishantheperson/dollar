@@ -10,6 +10,7 @@ import Parser
 import Parser.C0ParserState
 
 import Data.Int
+import Data.Word
 import Data.Char 
 import Numeric 
 import Data.Array.MArray
@@ -36,7 +37,7 @@ showC0Value flags = \case
   --C0IntVal i -> return $ show i -- TODO: number formats via Reader monad 
   C0IntVal i -> 
     let base = replIntBase flags 
-        num = if i < 0 then i + (maxBound :: Int32) else i 
+        num = (fromIntegral i) :: Word32
     in return $ case base of 
          10 -> show i 
          16 -> "0x" ++ zeroPad 8 (showHex num "")
@@ -50,6 +51,7 @@ showC0Value flags = \case
   C0VoidVal -> return "(void)"
   C0PointerVal _ Nothing -> return "NULL"
   C0PointerVal t _ -> return $ "<" ++ show t ++ "*>"
+
   C0StructVal s -> do 
     fieldStrings :: [String] <- forM (Map.toList s) $ \(fieldName, fieldVal) -> do
       shownVal <- showC0Value flags fieldVal 
@@ -68,14 +70,14 @@ showC0Value flags = \case
                   n + 1 -> '0':go s n  
 
 
-repl :: [Function] -> C0ParserState -> ReplFlags -> IO ((), Context)
+--repl :: [Function] -> C0ParserState -> ReplFlags -> IO ((), EvalInfo)
 repl fs state flags = runEvalT $ flip runReaderT flags $ runInputT (settings fs) (loop fs state)
 
 prompt = "\x1b[32;1m$> \x1b[0m"
 
 -- Evaluator is the state of the "main" function that's always running
 -- in the interpreter 
-loop :: [Function] -> C0ParserState -> InputT ReplT ()
+--loop :: [Function] -> C0ParserState -> InputT ReplT ()
 loop fs state = do 
   getInputLine prompt >>= \case
     Nothing -> do

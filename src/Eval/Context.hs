@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module Eval.Context where 
 
 import AST
@@ -15,33 +16,63 @@ data Context = Context {
                  getParentScope :: Maybe Context 
                } deriving Show 
 
+data EvalInfo = EvalInfo {
+                  getContext :: Context,
+                  getEvalTypedefs :: [(String, C0Type)],
+                  getEvalStructs :: [(String, [(String, C0Type)])]
+                } deriving Show 
+
 emptyContext = Context Map.empty Nothing 
+emptyEvalInfo = EvalInfo emptyContext [] [] 
 
 -- throw IO error if var doesnt exist 
-lookupVar name = go name <$> get
+lookupVar name = go name <$> gets getContext
   where go name context = 
           case Map.lookup name (getCurrentScope context) of 
             Just v -> v 
             -- crashes if variable doesnt exist, thats the type checkers job :) 
             Nothing -> go name (fromJust $ getParentScope context) 
 
-insertVar :: String -> C0Value -> Context -> Context 
-insertVar name val context = 
-  let scope = getCurrentScope context 
+insertVar :: String -> C0Value -> EvalInfo -> EvalInfo
+insertVar name val info = 
+  let context = getContext info 
+      scope = getCurrentScope context 
       newMap = Map.insert name val scope 
-  in context { getCurrentScope = newMap }
+  in info { getContext = context { getCurrentScope = newMap } }
 
-pushScope :: Context -> Context 
-pushScope c = Context Map.empty (Just c) 
+updateVar :: String -> C0Value -> EvalInfo -> EvalInfo
+updateVar name val info = info { getContext = go (getContext info) }
+  where go :: Context -> Context 
+        go context = 
+          let scope = getCurrentScope context in 
+          case Map.lookup name (getCurrentScope context) of 
+              Just _ -> context { getCurrentScope = Map.insert name val scope }
+              Nothing -> context { getParentScope = Just $ go (fromJust $ getParentScope context) }
 
-popScope :: Context -> Context 
-popScope = fromJust . getParentScope 
+pushScope :: EvalInfo -> EvalInfo 
+pushScope info = 
+  let context = getContext info 
+  in info { getContext = Context Map.empty (Just context) }
+
+popScope :: EvalInfo -> EvalInfo
+popScope info = 
+  let context = getContext info 
+  in info { getContext = fromJust . getParentScope $ context }
 
 fromMap :: VarMap -> Context 
 fromMap = flip Context Nothing
 
-getAllVars :: Context -> [VariableDecl]
-getAllVars c = map (flip VariableDecl C0Void) (Map.keys (getCurrentScope c)) ++ rest 
-  where rest = case getParentScope c of 
-                 Nothing -> []
-                 Just parent -> getAllVars parent 
+getAllVars :: EvalInfo -> [VariableDecl]
+getAllVars info = 
+  let context = getContext info 
+  in go (Just context)
+  where go = \case Just c -> map (flip VariableDecl C0Void) (Map.keys (getCurrentScope c)) ++ go (getParentScope c)
+                   Nothing -> []  
+
+-- getAllVars :: EvalInfo  -> [VariableDecl]
+-- getAllVars info =
+--   let context = getContext info  
+--   in map (flip VariableDecl C0Void) (Map.keys (getCurrentScope context)) ++ rest 
+--   where rest = case getParentScope c of 
+--                  Nothing -> []
+--                  Just parent -> getAllVars parent 
