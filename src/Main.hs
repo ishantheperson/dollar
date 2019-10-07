@@ -43,7 +43,7 @@ findBase = \case [] -> 10
 main :: IO ()
 main = do 
   putStr "\x1b[32;1m" -- green bold
-  putStrLn "Welcome to Dollar, version -1"
+  putStrLn "Welcome to Dollar, version 0.1"
   putStr "\x1b[0m" -- reset 
 
   putStrLn "For help, type #help"

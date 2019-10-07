@@ -1,22 +1,25 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-module Eval.Builtin (builtinFunctions, 
+module Eval.Builtin (
+  builtinFunctions, 
   string, conio, util) where 
 
 import AST
 
+import Data.List (genericLength)
 import Data.Int
 import Data.Array.MArray
 import Control.Monad
 
 import System.Exit (exitFailure)
 
+-- | All C0 builtin functions
 builtinFunctions = 
   [c0Assert, c0Error] ++ -- Builtins
   string ++
   conio ++ 
   util 
 
-string = [stringToCharArray]
+string = [stringToCharArray, stringFromCharArray, stringLength]
 conio = [c0print, println, printInt]
 util = [c0abs, intMax, intMin]
 
@@ -34,6 +37,28 @@ stringToCharArray' :: [C0Value] -> IO C0Value
 stringToCharArray' [C0StringVal s] = 
   let chars = map C0CharVal  (s ++ "\0") 
   in C0ArrayVal C0Char <$> newListArray (0, (fromIntegral $ length chars) - 1) chars 
+
+stringFromCharArray :: Function
+stringFromCharArray = Function {
+  functionType = C0String,
+  functionName = "string_from_chararray",
+  functionArgDecls = [VariableDecl "c" (C0Array C0Char)],
+  functionContracts = [],
+  functionBody = NativeFunctionBody stringFromCharArray'
+}
+
+stringFromCharArray' :: [C0Value] -> IO C0Value
+stringFromCharArray' [C0ArrayVal C0Char a] = 
+  C0StringVal . init . map (\(C0CharVal c) -> c) <$> getElems a 
+
+stringLength :: Function
+stringLength = Function {
+  functionType = C0Int,
+  functionName = "string_length",
+  functionArgDecls = [VariableDecl "s" C0String],
+  functionContracts = [],
+  functionBody = NativeFunctionBody $ \[C0StringVal s] -> return . C0IntVal $ genericLength s
+}
 
 println :: Function
 println = Function {
